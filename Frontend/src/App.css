@@ -1,42 +1,255 @@
+body {
+  background: #0f172a;
+  color: #f8fafc;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
 #root {
   max-width: 1280px;
   margin: 0 auto;
   padding: 2rem;
-  text-align: center;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.app {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.app__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+.app__header h1 {
+  margin: 0;
+  font-size: 2rem;
 }
 
-.card {
-  padding: 2em;
+.app__header p {
+  margin: 0.25rem 0 0;
+  color: #cbd5f5;
 }
 
-.read-the-docs {
-  color: #888;
+.status {
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.status--ok {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+}
+
+.status--error {
+  background: rgba(248, 113, 113, 0.15);
+  color: #f87171;
+}
+
+.status--unknown {
+  background: rgba(148, 163, 184, 0.15);
+  color: #e2e8f0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.panel {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 18px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.panel h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.stats {
+  display: flex;
+  gap: 1rem;
+}
+
+.stat {
+  background: rgba(30, 41, 59, 0.8);
+  border-radius: 14px;
+  padding: 0.75rem 1.25rem;
+}
+
+.stat__label {
+  display: block;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.stat__value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.upload {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.upload__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-align: left;
+}
+
+input[type='text'],
+input[type='file'],
+textarea {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 12px;
+  padding: 0.6rem 0.8rem;
+  color: #f8fafc;
+  font-size: 0.95rem;
+}
+
+textarea {
+  resize: vertical;
+}
+
+button {
+  border: none;
+  border-radius: 12px;
+  padding: 0.7rem 1.2rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.primary {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #f8fafc;
+}
+
+.helper-text {
+  margin: 0;
+  color: #cbd5f5;
+  font-size: 0.85rem;
+}
+
+.document-list ul,
+.search-results,
+.knowledge-hits ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.document-list li,
+.search-results li,
+.knowledge-hits li {
+  background: rgba(30, 41, 59, 0.6);
+  border-radius: 12px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.chat__history {
+  max-height: 420px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-right: 0.5rem;
+}
+
+.chat__message {
+  padding: 0.75rem;
+  border-radius: 14px;
+  background: rgba(30, 41, 59, 0.7);
+}
+
+.chat__message--user {
+  margin-left: auto;
+  background: rgba(99, 102, 241, 0.35);
+}
+
+.chat__message--assistant {
+  margin-right: auto;
+  background: rgba(59, 130, 246, 0.25);
+}
+
+.chat__message--system {
+  margin: 0 auto;
+  opacity: 0.8;
+}
+
+.chat__role {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.chat__content {
+  margin-top: 0.35rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.chat__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.alert {
+  background: rgba(250, 204, 21, 0.12);
+  color: #facc15;
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.search {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.search input {
+  flex: 1;
+}
+
+.knowledge-hits h3 {
+  margin: 0;
+  font-size: 1.1rem;
 }

@@ -1,0 +1,74 @@
+"""Groq Whisper transcription client."""
+from __future__ import annotations
+
+import asyncio
+import json
+import logging
+from pathlib import Path
+from typing import BinaryIO
+
+import httpx
+
+from ...config import get_settings
+
+logger = logging.getLogger(__name__)
+
+
+class GroqTranscriber:
+    """Async client for Groq Whisper transcription API."""
+
+    def __init__(self) -> None:
+        settings = get_settings()
+        self._api_key = settings.groq_api_key
+        self._api_url = settings.groq_api_url
+        self._http_client = httpx.AsyncClient(timeout=60.0)
+
+    async def transcribe(self, file: BinaryIO, filename: str, *, language: str = "ru", prompt: str | None = None) -> dict:
+        logger.info("Transcribing audio via Groq Whisper")
+        files = {
+            "file": (filename, file, "audio/mpeg"),
+        }
+        data = {
+            "model": "whisper-large-v3-turbo",
+            "temperature": 0.0,
+            "response_format": "verbose_json",
+            "language": language,
+        }
+        if prompt:
+            data["prompt"] = prompt
+        headers = {"Authorization": f"Bearer {self._api_key}"}
+        response = await self._http_client.post(self._api_url, data=data, files=files, headers=headers)
+        response.raise_for_status()
+        payload = response.json()
+        logger.debug("Groq transcription response: %s", json.dumps(payload)[:512])
+        return payload
+
+    async def transcribe_file(self, path: Path, **kwargs) -> dict:
+        loop = asyncio.get_running_loop()
+        with path.open("rb") as file:
+            data = file.read()
+        return await loop.run_in_executor(None, self._transcribe_bytes, data, path.name, kwargs)
+
+    def _transcribe_bytes(self, data: bytes, filename: str, kwargs: dict) -> dict:
+        import anyio  # local import to avoid mandatory dependency when unused
+
+        async def _inner() -> dict:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                files = {"file": (filename, data, "audio/mpeg")}
+                payload = {
+                    "model": "whisper-large-v3-turbo",
+                    "temperature": 0.0,
+                    "response_format": "verbose_json",
+                    "language": kwargs.get("language", "ru"),
+                }
+                if kwargs.get("prompt"):
+                    payload["prompt"] = kwargs["prompt"]
+                headers = {"Authorization": f"Bearer {self._api_key}"}
+                response = await client.post(self._api_url, data=payload, files=files, headers=headers)
+                response.raise_for_status()
+                return response.json()
+
+        return anyio.run(_inner)
+
+    async def aclose(self) -> None:
+        await self._http_client.aclose()

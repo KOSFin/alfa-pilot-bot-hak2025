@@ -1,0 +1,57 @@
+"""Gemini client wrapper."""
+from __future__ import annotations
+
+import asyncio
+import logging
+from typing import Any
+
+import google.generativeai as genai
+
+from ...config import get_settings
+
+logger = logging.getLogger(__name__)
+
+
+class GeminiClient:
+    """Async-friendly wrapper around Gemini SDK."""
+
+    def __init__(self) -> None:
+        settings = get_settings()
+        genai.configure(api_key=settings.gemini_api_key)
+        self._model_name_default = "gemini-1.5-pro"
+
+    async def generate_content(self, prompt: str, *, model: str | None = None, tools: list[dict[str, Any]] | None = None) -> str:
+        model_name = model or self._model_name_default
+        logger.debug("Generating content with Gemini model=%s", model_name)
+        response = await asyncio.to_thread(
+            lambda: genai.GenerativeModel(model_name, tools=tools).generate_content(prompt)
+        )
+        return response.text or ""
+
+    async def generate_structured(self, prompt: str, *, schema: dict[str, Any], model: str | None = None) -> dict[str, Any]:
+        model_name = model or self._model_name_default
+        logger.debug("Generating structured content with schema via Gemini model=%s", model_name)
+        response = await asyncio.to_thread(
+            lambda: genai.GenerativeModel(model_name).generate_content(
+                prompt,
+                generation_config={
+                    "response_mime_type": "application/json",
+                    "response_schema": schema,
+                },
+            )
+        )
+        if hasattr(response, "parsed") and response.parsed:
+            return response.parsed
+        if response.text:
+            import json
+
+            try:
+                return json.loads(response.text)
+            except json.JSONDecodeError:
+                logger.warning("Failed to parse structured response, returning empty dict")
+        return {}
+
+    async def embed_text(self, text: str, *, model: str = "text-embedding-004") -> list[float]:
+        logger.debug("Embedding text via Gemini model=%s", model)
+        response = await asyncio.to_thread(lambda: genai.embed_content(model=model, content=text))
+        return response["embedding"]
