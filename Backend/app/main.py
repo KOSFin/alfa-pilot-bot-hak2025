@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
+from aiogram.client.default import DefaultBotProperties
 from aiogram.fsm.storage.redis import RedisStorage
 from aiogram.types import Update
 from fastapi import APIRouter, FastAPI, Request
@@ -42,7 +43,7 @@ async def lifespan(app: FastAPI):
     from bot.handlers import setup_handlers  # local import to avoid circular
 
     dispatcher.include_router(setup_handlers())
-    bot = Bot(token=settings.bot_token, parse_mode=ParseMode.HTML)
+    bot = Bot(token=settings.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 
     app.state.settings = settings
     app.state.knowledge_base = knowledge_base
