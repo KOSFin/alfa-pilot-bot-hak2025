@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI):
     storage = RedisStorage.from_url(settings.redis_url)
     dispatcher = Dispatcher(storage=storage)
 
-    from ..bot.handlers import setup_handlers  # local import to avoid circular
+    from bot.handlers import setup_handlers  # local import to avoid circular
 
     dispatcher.include_router(setup_handlers())
     bot = Bot(token=settings.bot_token, parse_mode=ParseMode.HTML)
