@@ -102,8 +102,7 @@ async def upload_document(
 
 @router.get("/documents", response_model=list[DocumentSource])
 async def list_documents(store: RedisStore = Depends(get_document_store)) -> list[DocumentSource]:
-    client = store.client
-    keys = await client.keys("doc:*")
+    keys = await store.keys("doc:*")
     documents: list[DocumentSource] = []
     for key in keys:
         data = await store.get_json(key)

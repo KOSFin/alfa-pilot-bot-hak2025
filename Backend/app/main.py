@@ -5,15 +5,16 @@ import logging
 from contextlib import asynccontextmanager
 
 from aiogram import Bot, Dispatcher
-from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.storage.redis import RedisStorage
 from aiogram.types import Update
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
-from .routers import chat, documents, health
+from .routers import chat, documents, health, integration
 from .services.ai.orchestrator import AIOrchestrator
 from .services.calculators.engine import CalculatorEngine
 from .services.conversation.manager import ConversationManager
@@ -37,7 +38,14 @@ async def lifespan(app: FastAPI):
     conversation_manager = ConversationManager()
     calculator_engine = CalculatorEngine()
 
-    storage = RedisStorage.from_url(settings.redis_url)
+    try:
+        storage = RedisStorage.from_url(settings.redis_url)
+        await storage.redis.ping()  # type: ignore[attr-defined]
+        logger.info("FSM storage connected to Redis")
+    except Exception as exc:  # pragma: no cover - network failure
+        logger.warning("Redis FSM storage unavailable, falling back to in-memory storage: %s", exc)
+        storage = MemoryStorage()
+
     dispatcher = Dispatcher(storage=storage)
 
     from bot.handlers import setup_handlers  # local import to avoid circular
@@ -75,6 +83,7 @@ api_router = APIRouter()
 api_router.include_router(health.router)
 api_router.include_router(documents.router)
 api_router.include_router(chat.router)
+api_router.include_router(integration.router)
 
 app.include_router(api_router, prefix=settings.api_prefix)
 

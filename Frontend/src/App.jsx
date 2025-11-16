@@ -7,13 +7,27 @@ import {
   fetchHealth,
   searchKnowledge,
   sendChatMessage,
+  saveCompanyProfile,
   uploadDocument,
 } from './api'
 
 const INITIAL_CHAT_MESSAGE = 'Расскажите, какие данные или расчёты вам нужны.'
+const INITIAL_COMPANY_FORM = {
+  company_name: '',
+  industry: '',
+  employees: '',
+  annual_revenue: '',
+  key_systems: '',
+  goals: '',
+}
 
 function usePersistentUserId() {
   return useMemo(() => {
+    const tg = window.Telegram?.WebApp
+    const telegramUserId = tg?.initDataUnsafe?.user?.id
+    if (telegramUserId) {
+      return String(telegramUserId)
+    }
     const storageKey = 'alfa-pilot-user-id'
     const stored = window.localStorage.getItem(storageKey)
     if (stored) {
@@ -30,6 +44,8 @@ function usePersistentUserId() {
 
 function App() {
   const userId = usePersistentUserId()
+  const telegramWebApp = window.Telegram?.WebApp
+  const isTelegram = Boolean(telegramWebApp)
   const [documents, setDocuments] = useState([])
   const [chatInput, setChatInput] = useState('')
   const [chatHistory, setChatHistory] = useState([
@@ -42,10 +58,18 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('')
   const [searchResults, setSearchResults] = useState(null)
   const [docUploadProgress, setDocUploadProgress] = useState('')
+  const [companyForm, setCompanyForm] = useState({ ...INITIAL_COMPANY_FORM })
+  const [companyStatus, setCompanyStatus] = useState('')
+  const [isSavingCompany, setIsSavingCompany] = useState(false)
 
   useEffect(() => {
+    if (telegramWebApp) {
+      telegramWebApp.ready()
+      telegramWebApp.expand()
+    }
     fetchHealth().then(setHealthStatus).catch(() => setHealthStatus({ status: 'error' }))
     refreshDocuments()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function refreshDocuments() {
@@ -54,6 +78,51 @@ function App() {
       setDocuments(list)
     } catch (error) {
       console.error(error)
+    }
+  }
+
+  function handleCompanyFieldChange(event) {
+    const { name, value } = event.target
+    setCompanyForm((current) => ({ ...current, [name]: value }))
+  }
+
+  async function handleCompanySubmit(event) {
+    event.preventDefault()
+    if (!companyForm.company_name.trim()) {
+      setCompanyStatus('Введите название компании.')
+      return
+    }
+
+    const payload = {
+      user_id: userId,
+      company_name: companyForm.company_name.trim(),
+      industry: companyForm.industry.trim() || null,
+      employees: companyForm.employees ? Number(companyForm.employees) : null,
+      annual_revenue: companyForm.annual_revenue.trim() || null,
+      key_systems: companyForm.key_systems.trim() || null,
+      goals: companyForm.goals.trim() || null,
+    }
+
+    setCompanyStatus('Сохраняем профиль...')
+    setIsSavingCompany(true)
+    try {
+      await saveCompanyProfile(payload)
+      setCompanyStatus(
+        isTelegram
+          ? 'Профиль сохранён. Возвращаемся в диалог в Telegram.'
+          : 'Профиль сохранён. Можно перейти к документам и диалогу.'
+      )
+
+      if (isTelegram) {
+        telegramWebApp?.sendData(JSON.stringify({ type: 'company_profile', ...payload }))
+        setTimeout(() => telegramWebApp?.close(), 400)
+      }
+
+      setCompanyForm({ ...INITIAL_COMPANY_FORM })
+    } catch (error) {
+      setCompanyStatus(error.message)
+    } finally {
+      setIsSavingCompany(false)
     }
   }
 
@@ -158,6 +227,85 @@ function App() {
       </header>
 
       <main className="grid">
+        <section className="panel">
+          <h2>Профиль компании</h2>
+          <p>
+            Заполните краткую анкету, чтобы ИИ учитывал контекст вашего бизнеса. В Telegram мини-приложение
+            автоматически закроется после сохранения.
+          </p>
+          <form className="upload" onSubmit={handleCompanySubmit}>
+            <label className="upload__field">
+              <span>Название компании</span>
+              <input
+                type="text"
+                name="company_name"
+                placeholder="Например, ООО «Альфа»"
+                value={companyForm.company_name}
+                onChange={handleCompanyFieldChange}
+                required
+              />
+            </label>
+            <label className="upload__field">
+              <span>Индустрия</span>
+              <input
+                type="text"
+                name="industry"
+                placeholder="Финансы, логистика, IT..."
+                value={companyForm.industry}
+                onChange={handleCompanyFieldChange}
+              />
+            </label>
+            <label className="upload__field">
+              <span>Количество сотрудников</span>
+              <input
+                type="number"
+                min="0"
+                name="employees"
+                placeholder="Например, 120"
+                value={companyForm.employees}
+                onChange={handleCompanyFieldChange}
+              />
+            </label>
+            <label className="upload__field">
+              <span>Годовая выручка</span>
+              <input
+                type="text"
+                name="annual_revenue"
+                placeholder="Диапазон или оценка"
+                value={companyForm.annual_revenue}
+                onChange={handleCompanyFieldChange}
+              />
+            </label>
+            <label className="upload__field">
+              <span>Ключевые системы и сервисы</span>
+              <input
+                type="text"
+                name="key_systems"
+                placeholder="CRM, ERP, учётные системы"
+                value={companyForm.key_systems}
+                onChange={handleCompanyFieldChange}
+              />
+            </label>
+            <label className="upload__field">
+              <span>Цели и ожидания</span>
+              <textarea
+                name="goals"
+                rows={3}
+                placeholder="Опишите, что важно автоматизировать"
+                value={companyForm.goals}
+                onChange={handleCompanyFieldChange}
+              />
+            </label>
+            <button type="submit" className="primary" disabled={isSavingCompany}>
+              Сохранить профиль
+            </button>
+            {companyStatus && <p className="helper-text">{companyStatus}</p>}
+            {isTelegram && (
+              <p className="helper-text">После сохранения бот отправит подтверждение и закроет мини-приложение.</p>
+            )}
+          </form>
+        </section>
+
         <section className="panel">
           <h2>Память и документы</h2>
           <div className="stats">

@@ -155,7 +155,7 @@ async def execute_plan(
         {"user_id": payload.user_id, "mode": "calculator"},
     )
 
-    await store.client.delete(key)
+    await store.delete(key)
 
     return ChatResponse(
         reply=reply,

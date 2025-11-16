@@ -45,6 +45,19 @@ export async function sendChatMessage(payload) {
   return response.json();
 }
 
+export async function saveCompanyProfile(payload) {
+  const response = await fetch(`${API_BASE_URL}/integration/profile`, {
+    method: 'POST',
+    headers: defaultHeaders,
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    throw new Error(errorBody.detail ?? 'Не удалось сохранить профиль компании');
+  }
+  return response.json();
+}
+
 export async function executePlan(payload) {
   const response = await fetch(`${API_BASE_URL}/chat/execute`, {
     method: 'POST',
