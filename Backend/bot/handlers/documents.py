@@ -5,7 +5,7 @@ import httpx
 from aiogram import F, Router
 from aiogram.types import Message
 
-from ...app.config import get_settings
+from app.config import get_settings
 
 router = Router()
 

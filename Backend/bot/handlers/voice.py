@@ -7,8 +7,8 @@ import httpx
 from aiogram import F, Router
 from aiogram.types import Message
 
-from ...app.config import get_settings
-from ...app.services.transcription.groq_client import GroqTranscriber
+from app.config import get_settings
+from app.services.transcription.groq_client import GroqTranscriber
 
 router = Router()
 

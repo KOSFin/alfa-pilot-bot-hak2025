@@ -10,7 +10,7 @@ import httpx
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
 
-from ...app.config import get_settings
+from app.config import get_settings
 
 router = Router()
 
