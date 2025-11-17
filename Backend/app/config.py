@@ -48,7 +48,6 @@ class Settings(BaseSettings):
 
     # Feature flags
     enable_tool_audit: bool = Field(default=True)
-    enable_voice_processing: bool = Field(default=True)
 
     def ensure_directories(self) -> None:
         """Ensure that runtime directories exist."""
