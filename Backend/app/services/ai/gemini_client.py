@@ -92,7 +92,6 @@ class GeminiClient:
             if isinstance(message.content, str):
                 content = message.content
             else:
-
                 content = "".join(
                     part.get("text", "")
                     for part in (message.content or [])
@@ -137,35 +136,28 @@ class GeminiClient:
         """Simple text vectorization without external API calls."""
         logger.debug("Embedding text via simple vectorization")
         try:
-
             import re
             from collections import Counter
             import math
-
+            
             dimension = 768
-
             words = re.findall(r'\w+', text.lower())
             if not words:
                 return [0.0] * dimension
 
-
             vector = [0.0] * dimension
             word_freq = Counter(words)
-
-
+            
             for word, freq in word_freq.items():
-
                 word_hash = hash(word)
                 for i in range(3):
                     idx = (word_hash + i) % dimension
-
                     vector[idx] += math.log(1 + freq)
-
-
+            
             magnitude = math.sqrt(sum(x * x for x in vector))
             if magnitude > 0:
                 vector = [x / magnitude for x in vector]
-
+            
             return vector
         except Exception as exc:
             logger.exception("Unexpected embedding failure")
