@@ -24,15 +24,15 @@
 
 ```mermaid
 flowchart LR
-    U((Пользователь)) -->|/start, voice, docs| TG[Telegram Bot aiogram]
-    TG -->|Webhook или polling| API[FastAPI Backend]
-    API -->|Voice| Groq[Groq Whisper Large v3]
-    API -->|Reasoning| Gemini[Gemini 2.5 Flash]
-    API -->|Vectors| OS[(OpenSearch)]
-    API -->|Session, plans| Redis[(Redis)]
-    API -->|Mini-app API| FE[React + Vite WebApp]
-    API -->|Tools| Calc[Calculator Engine + Python executor]
-    Calc --> API
+	U((Пользователь)) -->|/start, voice, docs| TG[Telegram Bot aiogram]
+	TG -->|Webhook или polling| API[FastAPI Backend]
+	API -->|Voice| Groq[Groq Whisper Large v3]
+	API -->|Reasoning| Gemini[Gemini 2.5 Flash]
+	API -->|Vectors| OS[(OpenSearch)]
+	API -->|Session, plans| Redis[(Redis)]
+	API -->|Mini-app API| FE[React + Vite WebApp]
+	API -->|Tools| Calc[Calculator Engine + Python executor]
+	Calc --> API
 ```
 
 **User agents (по порядку):**
@@ -45,22 +45,22 @@ flowchart LR
 ## User story (первый вход)
 ```mermaid
 sequenceDiagram
-    participant User
-    participant Bot as @aalfa_bot
-    participant WebApp as alpha-hak-copilot.ruka.me
-    participant API as FastAPI
-    participant OS as OpenSearch
-    participant Redis
-    User->>Bot: /start
-    Bot-->>User: Просьба описать компанию + кнопка web-app
-    User->>WebApp: Загружает документы или описание
-    WebApp->>API: POST /api/knowledge/documents
-    API->>OS: Индексация + эмбеддинги Gemini
-    API->>Redis: Сохранение статуса и профиля
-    API-->>Bot: уведомление об успешной загрузке
-    User->>WebApp: Нажимает "Подключить Альфа-Бизнес" (заглушка)
-    WebApp->>API: POST /api/integration/alpha-business
-    API-->>Bot: Онбординг завершён, открываем основной функционал
+	participant User
+	participant Bot as @aalfa_bot
+	participant WebApp as alpha-hak-copilot.ruka.me
+	participant API as FastAPI
+	participant OS as OpenSearch
+	participant Redis
+	User->>Bot: /start
+	Bot-->>User: Просьба описать компанию + кнопка web-app
+	User->>WebApp: Загружает документы или описание
+	WebApp->>API: POST /api/knowledge/documents
+	API->>OS: Индексация + эмбеддинги Gemini
+	API->>Redis: Сохранение статуса и профиля
+	API-->>Bot: уведомление об успешной загрузке
+	User->>WebApp: Нажимает "Подключить Альфа-Бизнес" (заглушка)
+	WebApp->>API: POST /api/integration/alpha-business
+	API-->>Bot: Онбординг завершён, открываем основной функционал
 ```
 
 ## User story (рабочий режим)
@@ -179,3 +179,27 @@ npm run dev
 - Добавить новые калькуляторные инструменты (SQL, python notebooks, внешние API).
 - Расширить web-app: визуализация загрузок, графики рисков, управление папками.
 - Настроить backup OpenSearch + аналитические дешборды (Grafana/Redash).
+
+## Галерея
+<table>
+<tr>
+<td width="50%">
+<img src="image.png" alt="Telegram Bot Interface" />
+<p align="center"><b>Telegram Bot</b></p>
+</td>
+<td width="50%">
+<img src="image-1.png" alt="Web Dashboard" />
+<p align="center"><b>Web Application</b></p>
+</td>
+</tr>
+<tr>
+<td width="50%">
+<img src="image-2.png" alt="Calculator" />
+<p align="center"><b>Calculator Engine</b></p>
+</td>
+<td width="50%">
+<img src="image-3.png" alt="Knowledge Base" />
+<p align="center"><b>Knowledge Base</b></p>
+</td>
+</tr>
+</table>
