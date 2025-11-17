@@ -71,7 +71,11 @@ async def handle_text(message: Message) -> None:
         await message.answer("Сейчас не могу ответить, попробуйте позже.")
         return
 
-    data = response.json()
+    try:
+        data = response.json()
+    except Exception as e:
+        await message.answer("Произошла ошибка при обработке ответа. Попробуйте позже.")
+        return
 
     # Send a "thinking" message first
     thinking_message = await message.answer("⏳ Думаю...")
