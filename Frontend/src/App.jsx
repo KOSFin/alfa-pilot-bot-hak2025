@@ -21,6 +21,7 @@ const INITIAL_COMPANY_FORM = {
   annual_revenue: '',
   key_systems: '',
   goals: '',
+  language: 'ru',
 }
 
 function usePersistentUserId() {
@@ -99,6 +100,7 @@ function App() {
           annual_revenue: state.profile.annual_revenue ?? '',
           key_systems: state.profile.key_systems ?? '',
           goals: state.profile.goals ?? '',
+          language: state.profile.language ?? 'ru',
         })
         const status = state.profile_status?.status
         const reason = state.profile_status?.reason
@@ -176,6 +178,7 @@ function App() {
       annual_revenue: companyForm.annual_revenue.trim() || null,
       key_systems: companyForm.key_systems.trim() || null,
       goals: companyForm.goals.trim() || null,
+      language: companyForm.language || 'ru',
     }
 
     setCompanyStatus('Сохраняем профиль...')
@@ -411,6 +414,17 @@ function App() {
                 value={companyForm.goals}
                 onChange={handleCompanyFieldChange}
               />
+            </label>
+            <label className="upload__field">
+              <span>Язык для транскрибации голосовых сообщений</span>
+              <select
+                name="language"
+                value={companyForm.language}
+                onChange={handleCompanyFieldChange}
+              >
+                <option value="ru">Русский</option>
+                <option value="en">English</option>
+              </select>
             </label>
             <button type="submit" className="primary" disabled={isSavingCompany}>
               Сохранить профиль
@@ -724,6 +738,18 @@ function OnboardingView({
                   value={companyForm.goals}
                   onChange={onCompanyFieldChange}
                 />
+              </label>
+
+              <label className="form-field">
+                <span>Язык для транскрибации голосовых сообщений</span>
+                <select
+                  name="language"
+                  value={companyForm.language}
+                  onChange={onCompanyFieldChange}
+                >
+                  <option value="ru">Русский</option>
+                  <option value="en">English</option>
+                </select>
               </label>
 
               <button type="submit" className="primary" disabled={isSavingCompany}>

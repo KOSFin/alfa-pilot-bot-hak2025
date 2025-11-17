@@ -25,19 +25,18 @@ class GroqTranscriber:
 
     async def transcribe(self, file: BinaryIO, filename: str, *, language: str = "ru", prompt: str | None = None) -> dict:
         logger.info("Transcribing audio via Groq Whisper")
+        # Groq API requires all parameters to be sent as multipart/form-data fields (not JSON)
         files = {
             "file": (filename, file, "audio/mpeg"),
-        }
-        data = {
-            "model": "whisper-large-v3-turbo",
-            "temperature": 0.0,
-            "response_format": "verbose_json",
-            "language": language,
+            "model": (None, "whisper-large-v3-turbo"),
+            "temperature": (None, "0"),
+            "response_format": (None, "verbose_json"),
+            "language": (None, language),
         }
         if prompt:
-            data["prompt"] = prompt
+            files["prompt"] = (None, prompt)
         headers = {"Authorization": f"Bearer {self._api_key}"}
-        response = await self._http_client.post(self._api_url, data=data, files=files, headers=headers)
+        response = await self._http_client.post(self._api_url, files=files, headers=headers)
         response.raise_for_status()
         payload = response.json()
         logger.debug("Groq transcription response: %s", json.dumps(payload)[:512])
@@ -54,17 +53,18 @@ class GroqTranscriber:
 
         async def _inner() -> dict:
             async with httpx.AsyncClient(timeout=60.0) as client:
-                files = {"file": (filename, data, "audio/mpeg")}
-                payload = {
-                    "model": "whisper-large-v3-turbo",
-                    "temperature": 0.0,
-                    "response_format": "verbose_json",
-                    "language": kwargs.get("language", "ru"),
+                # Groq API requires all parameters to be sent as multipart/form-data fields (not JSON)
+                files = {
+                    "file": (filename, data, "audio/mpeg"),
+                    "model": (None, "whisper-large-v3-turbo"),
+                    "temperature": (None, "0"),
+                    "response_format": (None, "verbose_json"),
+                    "language": (None, kwargs.get("language", "ru")),
                 }
                 if kwargs.get("prompt"):
-                    payload["prompt"] = kwargs["prompt"]
+                    files["prompt"] = (None, kwargs["prompt"])
                 headers = {"Authorization": f"Bearer {self._api_key}"}
-                response = await client.post(self._api_url, data=payload, files=files, headers=headers)
+                response = await client.post(self._api_url, files=files, headers=headers)
                 response.raise_for_status()
                 return response.json()
 
