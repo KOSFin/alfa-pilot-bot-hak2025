@@ -34,7 +34,6 @@ export default function Overview({ userId }) {
 
   return (
     <div className="page-container">
-      {/* Account Balance Card */}
       <div className="card balance-card">
         <div className="balance-card__header">
           <div>
@@ -63,7 +62,6 @@ export default function Overview({ userId }) {
         </div>
       </div>
 
-      {/* Quick Stats */}
       <div className="card">
         <h3 className="card__title">📊 Статистика за месяц</h3>
         <div className="stats" style={{ marginTop: '16px' }}>
@@ -86,7 +84,6 @@ export default function Overview({ userId }) {
         </div>
       </div>
 
-      {/* Recent Transactions */}
       <div className="card">
         <div className="card__header">
           <h3 className="card__title">💳 Последние операции</h3>
@@ -116,7 +113,6 @@ export default function Overview({ userId }) {
         </div>
       </div>
 
-      {/* AI Assistant Stats */}
       <div className="card">
         <h3 className="card__title">🤖 Активность AI-ассистента</h3>
         <div className="ai-stats">
@@ -144,7 +140,6 @@ export default function Overview({ userId }) {
         </div>
       </div>
 
-      {/* Integration Status */}
       {integrationData?.status !== 'connected' && (
         <div className="card" style={{ background: 'var(--alfa-red)', borderColor: 'var(--alfa-red)' }}>
           <h3 className="card__title" style={{ color: 'var(--alfa-white)' }}>

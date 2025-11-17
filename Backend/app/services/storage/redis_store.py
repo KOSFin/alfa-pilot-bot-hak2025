@@ -50,7 +50,7 @@ class RedisStore:
             try:
                 await self._client.rpush(key, payload)
                 return
-            except (RedisError, OSError) as exc:  # pragma: no cover - network failure
+            except (RedisError, OSError) as exc:
                 self._mark_unavailable(exc)
         async with _memory_lock:
             _memory_lists[key].append(payload)
@@ -63,7 +63,7 @@ class RedisStore:
                 start = max(length - limit, 0)
                 raw_items = await self._client.lrange(key, start, -1)
                 return [json.loads(item) for item in raw_items]
-            except (RedisError, OSError) as exc:  # pragma: no cover - network failure
+            except (RedisError, OSError) as exc:
                 self._mark_unavailable(exc)
         async with _memory_lock:
             items = _memory_lists.get(key, [])[-limit:]
@@ -75,7 +75,7 @@ class RedisStore:
             try:
                 await self._client.set(key, payload, ex=expire)
                 return
-            except (RedisError, OSError) as exc:  # pragma: no cover - network failure
+            except (RedisError, OSError) as exc:
                 self._mark_unavailable(exc)
         async with _memory_lock:
             _memory_json[key] = payload
@@ -85,7 +85,7 @@ class RedisStore:
             try:
                 raw = await self._client.get(key)
                 return json.loads(raw) if raw else None
-            except (RedisError, OSError) as exc:  # pragma: no cover - network failure
+            except (RedisError, OSError) as exc:
                 self._mark_unavailable(exc)
         async with _memory_lock:
             raw = _memory_json.get(key)
@@ -96,7 +96,7 @@ class RedisStore:
             try:
                 await self._client.delete(key)
                 return
-            except (RedisError, OSError) as exc:  # pragma: no cover - network failure
+            except (RedisError, OSError) as exc:
                 self._mark_unavailable(exc)
         async with _memory_lock:
             _memory_json.pop(key, None)
@@ -106,7 +106,7 @@ class RedisStore:
         if self._can_use_redis():
             try:
                 return await self._client.keys(pattern)
-            except (RedisError, OSError) as exc:  # pragma: no cover - network failure
+            except (RedisError, OSError) as exc:
                 self._mark_unavailable(exc)
         async with _memory_lock:
             return [key for key in _memory_json if fnmatch(key, pattern)]

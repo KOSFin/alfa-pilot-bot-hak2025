@@ -54,26 +54,26 @@ class AIOrchestrator:
         return OrchestrationDecision(**response)
 
     def _build_prompt(self, message: ChatMessage, history: list[ChatMessage], knowledge: KnowledgeSearchResponse) -> str:
-        # Separate company information from other knowledge
+
         company_info = None
         other_knowledge = []
-        
+
         for hit in knowledge.hits:
             if hit.metadata and hit.metadata.get("source") == "company_profile":
                 company_info = hit.text
             else:
                 other_knowledge.append(hit)
-        
+
         history_text = "\n".join(
             f"{item.role}: {item.content}" for item in history[-8:]
         )
-        
+
         company_context = f"Company information:\n{company_info}\n\n" if company_info else ""
-        
+
         kb_snippets = "\n".join(
             f"Score {hit.score:.2f} | {hit.text[:512]}" for hit in other_knowledge
         )
-        
+
         prompt = dedent(
             f"""
             You are Alfa Pilot, an AI that assists SMEs with finance tasks and planning.
@@ -94,25 +94,25 @@ class AIOrchestrator:
         return prompt
 
     async def draft_advisor_reply(self, message: ChatMessage, history: list[ChatMessage], knowledge: KnowledgeSearchResponse) -> str:
-        # Extract company-specific information from knowledge hits
+
         company_info = None
         other_knowledge = []
-        
+
         for hit in knowledge.hits:
             if hit.metadata and hit.metadata.get("source") == "company_profile":
                 company_info = hit.text
             else:
                 other_knowledge.append(hit)
-        
-        # Build context with company info separated for better attention
+
+
         company_context = f"Информация о компании пользователя:\n{company_info}\n\n" if company_info else ""
-        
+
         knowledge_context = (
-            '\n'.join(f'- {hit.text[:512]}' for hit in other_knowledge) 
-            if other_knowledge 
+            '\n'.join(f'- {hit.text[:512]}' for hit in other_knowledge)
+            if other_knowledge
             else 'No extra context.'
         )
-        
+
         prompt = dedent(
             f"""
             You are Alfa Pilot AI advisor. Use the conversation history, company information, and knowledge base extracts to craft a concise, actionable reply.
@@ -126,7 +126,7 @@ class AIOrchestrator:
             User message:
             {message.content}
 
-            Provide a professional, helpful answer in Russian. Include bullet points where it improves clarity. 
+            Provide a professional, helpful answer in Russian. Include bullet points where it improves clarity.
             If the user asks about the company name or details, prioritize the company information provided at the beginning of this prompt.
             """
         ).strip()
@@ -187,19 +187,19 @@ class AIOrchestrator:
             """
         ).strip()
         response = await self._gemini.generate_content(prompt)
-        
-        # Extract tools used from payload and results
+
+
         tools_used = []
-        
-        # Add suggested tool from plan
+
+
         if confirmation_payload.get("suggested_tool"):
             tool_name = confirmation_payload["suggested_tool"]
             tools_used.append({
                 "name": self._get_tool_display_name(tool_name),
                 "icon": self._get_tool_icon(tool_name)
             })
-        
-        # Add tools from results
+
+
         for result in tool_results:
             if result.get("tool"):
                 tool_name = result["tool"]
@@ -208,9 +208,9 @@ class AIOrchestrator:
                         "name": self._get_tool_display_name(tool_name),
                         "icon": self._get_tool_icon(tool_name)
                     })
-        
+
         return response, tools_used
-    
+
     def _get_tool_display_name(self, tool_name: str) -> str:
         """Convert internal tool name to display name."""
         tool_map = {
@@ -221,7 +221,7 @@ class AIOrchestrator:
             "finance_calculator": "Финансовый калькулятор"
         }
         return tool_map.get(tool_name, tool_name.replace("_", " ").title())
-    
+
     def _get_tool_icon(self, tool_name: str) -> str:
         """Get icon for tool."""
         icon_map = {

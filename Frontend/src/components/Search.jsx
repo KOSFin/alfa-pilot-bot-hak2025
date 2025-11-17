@@ -54,7 +54,6 @@ export default function Search({ userId }) {
           </div>
         </form>
 
-        {/* Filters */}
         <div className="filter-chips">
           {filters.map((filter) => (
             <button
@@ -69,7 +68,6 @@ export default function Search({ userId }) {
         </div>
       </div>
 
-      {/* Search Results */}
       {searchResults && (
         <div className="card">
           <h3 className="card__title">Результаты поиска</h3>
@@ -105,7 +103,6 @@ export default function Search({ userId }) {
         </div>
       )}
 
-      {/* Search Tips */}
       {!searchResults && (
         <div className="card">
           <h3 className="card__title">💡 Советы по поиску</h3>

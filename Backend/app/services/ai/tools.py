@@ -37,7 +37,7 @@ class RestrictedPythonExecutor:
         start = time.perf_counter()
         try:
             with contextlib.redirect_stdout(stdout):
-                exec(  # noqa: S102 - controlled namespace
+                exec(
                     code,
                     {"__builtins__": self.SAFE_BUILTINS},
                     locals_namespace,
@@ -53,7 +53,7 @@ class RestrictedPythonExecutor:
                 error=None,
                 duration_ms=duration,
             )
-        except Exception as exc:  # pylint: disable=broad-except
+        except Exception as exc:
             duration = int((time.perf_counter() - start) * 1000)
             return ToolExecutionResult(
                 name=request.name,

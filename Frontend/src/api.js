@@ -16,7 +16,7 @@ export async function fetchDocuments(userId) {
 }
 
 export async function uploadDocument(formData, userId) {
-  // Add user_id to the form data
+
   formData.append('user_id', userId);
   const response = await fetch(`${API_BASE_URL}/knowledge/documents`, {
     method: 'POST',

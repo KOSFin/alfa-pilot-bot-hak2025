@@ -62,7 +62,7 @@ function App() {
     }
   }
 
-  // Check URL params for special modes (integration, calculator with data, etc.)
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const mode = params.get('mode');
@@ -79,7 +79,7 @@ function App() {
   const integrationConnected = onboardingState?.integration?.status === 'connected';
   const onboardingComplete = profileSaved && integrationConnected;
 
-  // Integration special view
+
   if (currentTab === 'integration') {
     return (
       <IntegrationView
@@ -93,10 +93,9 @@ function App() {
     );
   }
 
-  // Main app with navigation
+
   return (
     <div className="app-container">
-      {/* Header */}
       <header className="app-header">
         <div className="app-header__logo">
           <div className="app-header__logo-icon">А</div>
@@ -107,7 +106,6 @@ function App() {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="app-main">
         {currentTab === 'overview' && <Overview userId={userId} />}
         {currentTab === 'documents' && (
@@ -118,7 +116,6 @@ function App() {
         {currentTab === 'calculator' && <Calculator userId={userId} />}
       </main>
 
-      {/* Bottom Navigation */}
       <nav className="bottom-nav">
         <button
           className={`bottom-nav__item ${currentTab === 'overview' ? 'bottom-nav__item--active' : ''}`}

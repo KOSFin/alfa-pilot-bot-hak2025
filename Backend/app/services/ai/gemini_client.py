@@ -92,7 +92,7 @@ class GeminiClient:
             if isinstance(message.content, str):
                 content = message.content
             else:
-                # Aggregate text parts if the API returns a list of segments
+
                 content = "".join(
                     part.get("text", "")
                     for part in (message.content or [])
@@ -137,35 +137,35 @@ class GeminiClient:
         """Simple text vectorization without external API calls."""
         logger.debug("Embedding text via simple vectorization")
         try:
-            # Simple bag-of-words vectorization
+
             import re
             from collections import Counter
             import math
-            
+
             dimension = 768
-            # Tokenize and clean
+
             words = re.findall(r'\w+', text.lower())
             if not words:
-                return [0.0] * dimension  # Return zero vector
+                return [0.0] * dimension
 
-            # Create a simple hash-based vector (768 dimensions)
+
             vector = [0.0] * dimension
             word_freq = Counter(words)
-            
-            # Distribute word frequencies across vector dimensions
+
+
             for word, freq in word_freq.items():
-                # Use word hash to determine vector positions
+
                 word_hash = hash(word)
-                for i in range(3):  # Each word affects 3 dimensions
+                for i in range(3):
                     idx = (word_hash + i) % dimension
-                    # TF-IDF approximation: log(1 + freq)
+
                     vector[idx] += math.log(1 + freq)
-            
-            # Normalize vector
+
+
             magnitude = math.sqrt(sum(x * x for x in vector))
             if magnitude > 0:
                 vector = [x / magnitude for x in vector]
-            
+
             return vector
         except Exception as exc:
             logger.exception("Unexpected embedding failure")

@@ -59,7 +59,7 @@ async def _get_company_profile_info(user_id: str, store: RedisStore) -> str | No
                 company_info_parts.append(f"Выручка: {profile_data.get('annual_revenue')}")
             if profile_data.get("goals"):
                 company_info_parts.append(f"Цели: {profile_data.get('goals')}")
-            
+
             return "\n".join(company_info_parts)
     except Exception as e:
         logger.warning(f"Could not retrieve company profile for user {user_id}: {e}")
@@ -77,15 +77,15 @@ async def post_message(
     user_message = ChatMessage(role=MessageRole.USER, content=payload.content, metadata=payload.metadata)
     await conversation.append_messages(payload.user_id, [user_message])
     history = await conversation.get_recent_messages(payload.user_id)
-    
+
     company_info = await _get_company_profile_info(payload.user_id, store)
-    
+
     knowledge = await knowledge_base.search(payload.content, user_id=payload.user_id)
-    
+
     if company_info:
         company_related_keywords = ["компания", "называется", "название", "организация", "фирма", "наша", "моей", "моя", "мы"]
         is_company_query = any(keyword in payload.content.lower() for keyword in company_related_keywords)
-        
+
         if is_company_query:
             from ..schemas.knowledge import KnowledgeSearchHit
             company_hit = KnowledgeSearchHit(
@@ -187,9 +187,9 @@ async def execute_plan(
     tool_results = [result]
 
     reply_text, tools_used = await orchestrator.draft_calculator_reply(plan_payload, [result.model_dump()])
-    
+
     reply = ChatMessage(
-        role=MessageRole.ASSISTANT, 
+        role=MessageRole.ASSISTANT,
         content=reply_text,
         metadata={"tools_used": tools_used}
     )

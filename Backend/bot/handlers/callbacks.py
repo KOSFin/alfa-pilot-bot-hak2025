@@ -29,7 +29,7 @@ async def reset_context_callback(callback_query: CallbackQuery) -> None:
             await callback_query.answer("Ошибка соединения. Попробуйте позже.", show_alert=True)
             print(f"Error resetting context: {e}")
 
-    # Acknowledge the callback
+
     await callback_query.answer()
 
 
@@ -48,7 +48,7 @@ async def show_language_selection(callback_query: CallbackQuery) -> None:
         ]
     ])
 
-    # Update the message content and keyboard to prompt for language selection
+
     await callback_query.message.edit_text(
         "Выберите язык для распознавания речи:",
         reply_markup=keyboard
@@ -65,14 +65,14 @@ async def go_back_to_profile(callback_query: CallbackQuery) -> None:
     user_id = str(callback_query.from_user.id) if callback_query.from_user else None
     settings = get_settings()
 
-    # Get current profile to show current language setting
+
     store = RedisStore()
     profile = await store.get_json(f"company-profile:{user_id}") or {}
     current_lang = profile.get("language", "ru")
 
     lang_text = "Русский" if current_lang == "ru" else "English"
 
-    # Get the current onboarding status to determine the appropriate text
+
     status = await get_onboarding_status(user_id)
     if status.stage == "profile_needed":
         text = f"Текущий язык распознавания: {lang_text}\n\nДля завершения онбординга заполните профиль компании:"
@@ -84,6 +84,6 @@ async def go_back_to_profile(callback_query: CallbackQuery) -> None:
         text = f"Текущий язык распознавания: {lang_text}\n\nГотово к работе!"
         keyboard = build_keyboard_for_stage("ready", user_id)
 
-    # Restore the original message with the appropriate keyboard
+
     await callback_query.message.edit_text(text, reply_markup=keyboard)
     await callback_query.answer()

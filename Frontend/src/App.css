@@ -1,4 +1,4 @@
-/* Alfa Bank Modern Design */
+
 #root {
   max-width: 100%;
   margin: 0 auto;
@@ -13,7 +13,7 @@
   background: var(--alfa-bg);
 }
 
-/* Header Styles */
+
 .app-header {
   background: var(--alfa-black);
   border-bottom: 1px solid var(--alfa-gray);
@@ -53,14 +53,14 @@
   color: var(--alfa-light-gray);
 }
 
-/* Main Content */
+
 .app-main {
   flex: 1;
   overflow-y: auto;
   padding-bottom: 70px;
 }
 
-/* Bottom Navigation */
+
 .bottom-nav {
   position: fixed;
   bottom: 0;
@@ -103,14 +103,14 @@
   font-size: 22px;
 }
 
-/* Page Container */
+
 .page-container {
   padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
 }
 
-/* Card Styles */
+
 .card {
   background: var(--alfa-card-bg);
   border: 1px solid var(--alfa-gray);
@@ -139,7 +139,7 @@
   margin: 4px 0 0 0;
 }
 
-/* Buttons */
+
 .btn {
   border: none;
   border-radius: 12px;
@@ -175,7 +175,7 @@
   background: var(--alfa-hover);
 }
 
-/* Form Styles */
+
 .form-field {
   margin-bottom: 16px;
 }
@@ -215,7 +215,7 @@
   min-height: 80px;
 }
 
-/* Stats */
+
 .stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -243,7 +243,7 @@
   margin: 4px 0 0 0;
 }
 
-/* Document List Styles */
+
 .document-list {
   margin-top: 16px;
 }
@@ -268,7 +268,7 @@
   margin-bottom: 8px;
 }
 
-/* Profile View Styles */
+
 .profile-view {
   display: flex;
   flex-direction: column;
@@ -298,7 +298,7 @@
   font-weight: 500;
 }
 
-/* Search Styles */
+
 .search-container {
   display: flex;
   gap: 12px;
@@ -427,7 +427,7 @@
   margin-right: 8px;
 }
 
-/* Overview/Balance Card */
+
 .balance-card {
   background: linear-gradient(135deg, var(--alfa-red) 0%, #c72819 100%);
   border: none;
@@ -575,7 +575,7 @@
   margin-top: 2px;
 }
 
-/* Calculator Styles */
+
 .calculator-page {
   max-width: 900px;
   margin: 0 auto;

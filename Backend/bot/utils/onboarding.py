@@ -72,7 +72,7 @@ def build_keyboard_for_stage(stage: OnboardingStage, user_id: str | None = None)
         text="Подключить Альфа-Бизнес",
         web_app=WebAppInfo(url=integration_url),
     )
-    # Add language selection button and reset context button for the ready stage (permanent keyboard)
+
     language_button = InlineKeyboardButton(
         text="🌐 Язык распознавания",
         callback_data="select_language"
@@ -85,7 +85,7 @@ def build_keyboard_for_stage(stage: OnboardingStage, user_id: str | None = None)
         return InlineKeyboardMarkup(inline_keyboard=[[profile_button]])
     if stage == OnboardingStage.INTEGRATION:
         return InlineKeyboardMarkup(inline_keyboard=[[integration_button]])
-    # For ready stage, include both profile and integration buttons plus language and reset context
+
     return InlineKeyboardMarkup(inline_keyboard=[[profile_button], [integration_button], [language_button], [reset_context_button]])
 
 
@@ -106,7 +106,7 @@ async def ensure_onboarding_ready(message: Message, store: RedisStore | None = N
         text = dedent(
             """
             📋 <b>Заполните профиль компании</b>
-            
+
             Откройте мини-приложение ниже и введите базовую информацию о вашем бизнесе. Это займёт 2 минуты, но даст мне понимание контекста вашей компании. После сохранения профиль автоматически проиндексируется.
             """
         ).strip()
@@ -120,7 +120,7 @@ async def ensure_onboarding_ready(message: Message, store: RedisStore | None = N
     text = dedent(
         """
         🔗 <b>Подключите Альфа-Бизнес</b>
-        
+
         Это последний шаг онбординга. Подключение позволит мне анализировать ваши финансовые операции и давать более точные рекомендации. Нажмите кнопку ниже — это займёт всего 10 секунд.
         """
     ).strip()

@@ -36,9 +36,9 @@ async def _notify_bot_profile_saved(request: Request, user_id: str) -> None:
     try:
         from aiogram import Bot
         from textwrap import dedent
-        
+
         logger.info("Starting notification for profile saved: user_id=%s", user_id)
-        
+
         bot: Bot = request.app.state.bot
         if not bot:
             logger.error("Bot instance not available in app state")
@@ -52,18 +52,18 @@ async def _notify_bot_profile_saved(request: Request, user_id: str) -> None:
         if integration_state and integration_state.get("status") == "connected":
             logger.info("Skip profile notification: integration already connected for user %s", user_id)
             return
-        
+
         text = dedent(
             """
             ✅ <b>Профиль сохранён и отправлен в очередь на индексацию!</b>
-            
+
             🔗 <b>Следующий шаг — подключение Альфа-Бизнес</b>
             Это позволит мне анализировать ваши финансовые операции и давать более точные рекомендации. Нажмите кнопку ниже, чтобы подключить интеграцию (это займёт 10 секунд).
             """
         ).strip()
-        
+
         from bot.utils.onboarding import OnboardingStage, build_keyboard_for_stage
-        
+
         chat_id = int(user_id)
         logger.info("Sending message to user %s", chat_id)
         await bot.send_message(
@@ -80,9 +80,9 @@ async def _notify_bot_integration_connected(request: Request, user_id: str) -> N
     try:
         from aiogram import Bot
         from textwrap import dedent
-        
+
         logger.info("Starting notification for integration connected: user_id=%s", user_id)
-        
+
         bot: Bot = request.app.state.bot
         if not bot:
             logger.error("Bot instance not available in app state")
@@ -90,33 +90,33 @@ async def _notify_bot_integration_connected(request: Request, user_id: str) -> N
         if not (user_id and str(user_id).lstrip("-+ ").isdigit()):
             logger.warning("Skip integration notification: user_id '%s' is not numeric", user_id)
             return
-        
+
         text = dedent(
             """
             🎉 <b>Отлично! Альфа-Бизнес подключён.</b>
-            
+
             ✅ Онбординг завершён! Теперь я готов работать с полным контекстом вашего бизнеса.
-            
+
             📖 <b>Как использовать бота:</b>
-            
+
             1️⃣ <b>Задавайте вопросы</b>
             Просто напишите текстом или отправьте голосовое сообщение. Я отвечу с учётом контекста вашей компании и финансовых данных.
-            
+
             2️⃣ <b>Загружайте документы</b>
             Через веб-приложение можно загрузить документы (отчёты, регламенты, контракты). Я буду использовать их при ответах.
-            
+
             3️⃣ <b>Выполняйте расчёты</b>
             Если я предложу расчётный план, вы сможете выполнить его командой /execute_&lt;id&gt;
-            
+
             4️⃣ <b>Используйте веб-интерфейс</b>
             Для работы с документами и детального диалога откройте веб-приложение.
-            
+
             Готов к работе! Чем могу помочь?
             """
         ).strip()
-        
+
         from bot.utils.onboarding import OnboardingStage, build_keyboard_for_stage
-        
+
         chat_id = int(user_id)
         logger.info("Sending message to user %s", chat_id)
         await bot.send_message(
@@ -146,12 +146,12 @@ async def _index_profile_background(profile: CompanyProfile, knowledge_base: Kno
             "Системы": profile.key_systems,
             "Цели": profile.goals,
         }
-        
+
         lines = [f"{label}: {value}" for label, value in fields.items() if value]
         primary_summary = "Профиль компании\n" + "\n".join(lines)
 
         additional_texts = []
-        
+
         if profile.company_name:
             name_variations = [
                 f"Компания: {profile.company_name}",
@@ -162,7 +162,7 @@ async def _index_profile_background(profile: CompanyProfile, knowledge_base: Kno
                 f"Фирма: {profile.company_name}",
                 f"Компания {profile.company_name} работает в сфере {profile.industry or 'неизвестной индустрии'}"
             ]
-            
+
             question_variations = [
                 f"Как называется моя компания? Моя компания называется {profile.company_name}",
                 f"Название вашей компании: {profile.company_name}",
@@ -175,10 +175,10 @@ async def _index_profile_background(profile: CompanyProfile, knowledge_base: Kno
                 f"{profile.company_name} - это название моей компании",
                 f"Наша организация: {profile.company_name}"
             ]
-            
+
             additional_texts.extend(name_variations)
             additional_texts.extend(question_variations)
-            
+
             contextual_variations = []
             if profile.industry:
                 contextual_variations.extend([
@@ -201,14 +201,14 @@ async def _index_profile_background(profile: CompanyProfile, knowledge_base: Kno
                     f"Цели компании {profile.company_name}: {profile.goals}",
                     f"{profile.company_name} стремится к: {profile.goals}"
                 ])
-            
+
             additional_texts.extend(contextual_variations)
 
         all_documents = [(primary_summary, "primary")]
         all_documents.extend([(text, "variation") for text in additional_texts if text.strip()])
 
         metadata = {"user_id": profile.user_id, "source": "company_profile", "profile_type": "company_info"}
-        
+
         indexed_any = False
         for idx, (text, doc_type) in enumerate(all_documents):
             if text.strip():
@@ -240,7 +240,7 @@ async def _index_profile_background(profile: CompanyProfile, knowledge_base: Kno
                 "indexed_count": len(all_documents),
             },
         )
-        
+
         logger.info(f"Successfully indexed company profile for user {profile.user_id} with {len(all_documents)} documents")
 
     except Exception as exc:

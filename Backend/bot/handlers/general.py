@@ -32,18 +32,18 @@ async def cmd_start(message: Message) -> None:
     logger.info("Handling /start for user %s", message.from_user.id if message.from_user else "unknown")
     user_id = str(message.from_user.id) if message.from_user else "anonymous"
     keyboard_user_id = str(message.from_user.id) if message.from_user else None
-    
-    # Check for deep link parameters (e.g., /start calc_data)
+
+
     start_args = message.text.split(maxsplit=1)
     if len(start_args) > 1:
         args = start_args[1]
-        
-        # Handle calculator deep link
+
+
         if args.startswith('{'):
             try:
                 calc_data = json.loads(args)
                 if calc_data.get("question"):
-                    # User shared a calculation - show info and prompt them to continue in web app
+
                     await message.answer(
                         f"📊 <b>Расчёт из мини-приложения</b>\n\n"
                         f"Вопрос: {calc_data['question']}\n\n"
@@ -53,19 +53,19 @@ async def cmd_start(message: Message) -> None:
                     return
             except json.JSONDecodeError:
                 logger.warning(f"Failed to parse deep link data: {args}")
-    
+
     status = await get_onboarding_status(user_id)
 
     if status.stage == OnboardingStage.PROFILE:
         text = dedent(
             """
             👋 Привет! Я <b>Alfa Pilot</b> — ваш умный помощник для бизнес-расчётов и анализа.
-            
+
             🎯 <b>Зачем я нужен?</b>
             • Быстро считаю бизнес-сценарии с учётом контекста вашей компании
             • Отвечаю на вопросы, используя вашу базу знаний и документы
             • Помогаю принимать решения на основе финансовых данных
-            
+
             📋 <b>Что нужно для начала?</b>
             Заполните профиль компании в мини-приложении ниже. Это займёт 2 минуты, но даст мне понимание вашего бизнеса. После сохранения профиль автоматически проиндексируется, и я смогу давать более точные ответы.
             """
@@ -74,7 +74,7 @@ async def cmd_start(message: Message) -> None:
         text = dedent(
             """
             ✅ Отлично! Профиль компании получен и уже индексируется.
-            
+
             🔗 <b>Следующий шаг — подключение Альфа-Бизнес</b>
             Это позволит мне учитывать ваши реальные финансовые операции при расчётах и анализе. Нажмите кнопку ниже, чтобы подключить интеграцию.
             """
@@ -83,21 +83,21 @@ async def cmd_start(message: Message) -> None:
         text = dedent(
             """
             🎉 <b>Отлично! Всё готово к работе.</b>
-            
+
             📖 <b>Как использовать бота:</b>
-            
+
             1️⃣ <b>Задавайте вопросы</b>
             Просто напишите текстом или отправьте голосовое сообщение. Я отвечу с учётом контекста вашей компании и сохраню диалог в памяти.
-            
+
             2️⃣ <b>Загружайте документы</b>
             Через веб-приложение можно загрузить документы (отчёты, регламенты, контракты). Я буду использовать их при ответах.
-            
+
             3️⃣ <b>Выполняйте расчёты</b>
             Если я предложу расчётный план, вы сможете выполнить его командой /execute_&lt;id&gt;
-            
+
             4️⃣ <b>Используйте веб-интерфейс</b>
             Для работы с документами и детального диалога используйте веб-приложение.
-            
+
             Готов к работе! Задавайте вопросы или загружайте документы.
             """
         ).strip()
@@ -121,23 +121,23 @@ async def handle_commands(message: Message) -> None:
         await message.answer("План не найден или истёк. Попробуйте запросить расчёт заново.")
         return
 
-    # Send a "thinking" message first
+
     thinking_message = await message.answer("⏳ Выполняю расчёт...")
 
     data = response.json()
     reply_text = data.get("reply", {}).get("content", "")
     reply_metadata = data.get("reply", {}).get("metadata", {})
-    
-    # Format the reply text to ensure proper Telegram formatting
+
+
     formatted_reply = format_bot_message(reply_text)
-    
-    # Add tools used if available
+
+
     tools_used = reply_metadata.get("tools_used", [])
     if tools_used:
         tools_str = " ".join([f"{tool.get('icon', '🔧')} {tool.get('name', 'Tool')}" for tool in tools_used])
         formatted_reply += f"\n\n<i>🛠 Использованные инструменты: {tools_str}</i>"
 
-    # Edit the thinking message with the actual response
+
     try:
         await message.bot.edit_message_text(
             chat_id=message.chat.id,
@@ -145,7 +145,7 @@ async def handle_commands(message: Message) -> None:
             text=formatted_reply
         )
     except Exception:
-        # If editing fails (e.g., message too old), send a new message
+
         await message.answer(formatted_reply)
 
 
@@ -157,30 +157,30 @@ def format_bot_message(text: str) -> str:
     if not text:
         return text
 
-    # Escape HTML characters to prevent issues
+
     text = html.escape(text)
 
-    # Convert markdown-style bold (**) to Telegram HTML bold tags
+
     text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
     text = re.sub(r'__(.*?)__', r'<b>\1</b>', text)
 
-    # Convert markdown-style italic (*) to Telegram HTML italic tags
+
     text = re.sub(r'\*(.*?)\*', r'<i>\1</i>', text)
     text = re.sub(r'_(.*?)_', r'<i>\1</i>', text)
 
-    # Handle markdown-style code blocks
-    text = re.sub(r'```([\s\S]*?)```', r'<pre>\1</pre>', text)  # Multi-line code blocks
-    text = re.sub(r'`(.*?)`', r'<code>\1</code>', text)  # Inline code
 
-    # Handle markdown-style lists
+    text = re.sub(r'```([\s\S]*?)```', r'<pre>\1</pre>', text)
+    text = re.sub(r'`(.*?)`', r'<code>\1</code>', text)
+
+
     text = re.sub(r'^\s*[-*]\s+(.*)', r'• \1', text, flags=re.MULTILINE)
     text = re.sub(r'^\s*\d+\.\s+(.*)', r'• \1', text, flags=re.MULTILINE)
 
-    # Convert markdown headers to bold text
+
     text = re.sub(r'^\s*#+\s+(.*)', r'<b>\1</b>', text, flags=re.MULTILINE)
 
-    # Handle newlines appropriately
-    text = text.replace('\n\n', '\n\n')  # Preserve paragraph breaks
+
+    text = text.replace('\n\n', '\n\n')
 
     return text
 
@@ -212,8 +212,8 @@ async def handle_web_app_data(message: Message) -> None:
         return
 
     logger.info("Web app data received: type=%s", payload.get("type"))
-    
-    # Web app data is just for confirmation, actual notifications come from API
+
+
     await message.answer("✅ Данные получены!")
 
 
@@ -222,7 +222,7 @@ async def cmd_language(message: Message) -> None:
     """Handle /language command to show language selection."""
     from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-    # Get current language from user profile
+
     user_id = str(message.from_user.id)
     store = RedisStore()
     profile = await store.get_json(f"company-profile:{user_id}") or {}

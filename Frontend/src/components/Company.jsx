@@ -268,7 +268,6 @@ export default function Company({ userId }) {
         )}
       </div>
 
-      {/* Company Stats Card */}
       {profile && !isEditing && (
         <div className="card">
           <h3 className="card__title">📊 Статистика использования</h3>

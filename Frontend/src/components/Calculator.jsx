@@ -8,7 +8,7 @@ export default function Calculator({ userId }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [usedTools, setUsedTools] = useState([]);
 
-  // Parse URL parameters for deep linking
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const calcData = params.get('calc_data');
@@ -42,7 +42,7 @@ export default function Calculator({ userId }) {
 
       setChatHistory((prev) => [...prev, response.reply]);
 
-      // Extract tools used from metadata
+
       if (response.reply.metadata?.tools_used) {
         setUsedTools(response.reply.metadata.tools_used);
       }
@@ -76,11 +76,11 @@ export default function Calculator({ userId }) {
       });
 
       setChatHistory((prev) => [...prev, response.reply]);
-      
+
       if (response.reply.metadata?.tools_used) {
         setUsedTools(response.reply.metadata.tools_used);
       }
-      
+
       setPendingPlan(null);
     } catch (error) {
       setChatHistory((prev) => [
@@ -104,7 +104,7 @@ export default function Calculator({ userId }) {
 
     const encoded = encodeURIComponent(JSON.stringify(calcData));
     const shareUrl = `https://t.me/aalfa_bot?startapp=${encoded}`;
-    
+
     navigator.clipboard.writeText(shareUrl).then(() => {
       alert('Ссылка скопирована! Отправьте её через бота.');
     });
@@ -120,7 +120,6 @@ export default function Calculator({ userId }) {
           </div>
         </div>
 
-        {/* Chat History */}
         <div className="calculator-chat">
           {chatHistory.length === 0 ? (
             <div className="calculator-empty">
@@ -184,7 +183,6 @@ export default function Calculator({ userId }) {
             </div>
           )}
 
-          {/* Pending Plan Confirmation */}
           {pendingPlan && (
             <div className="plan-confirmation">
               <div className="plan-confirmation__header">
@@ -209,7 +207,6 @@ export default function Calculator({ userId }) {
             </div>
           )}
 
-          {/* Used Tools Display */}
           {usedTools.length > 0 && (
             <div className="used-tools">
               <div className="used-tools__title">🛠 Использованные инструменты:</div>
@@ -224,7 +221,6 @@ export default function Calculator({ userId }) {
           )}
         </div>
 
-        {/* Input Form */}
         <form onSubmit={handleSubmit} className="calculator-input">
           <textarea
             className="calculator-input__field"

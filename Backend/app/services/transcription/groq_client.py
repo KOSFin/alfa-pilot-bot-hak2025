@@ -25,7 +25,7 @@ class GroqTranscriber:
 
     async def transcribe(self, file: BinaryIO, filename: str, *, language: str = "ru", prompt: str | None = None) -> dict:
         logger.info("Transcribing audio via Groq Whisper with language: %s", language)
-        # Groq API requires all parameters to be sent as multipart/form-data fields (not JSON)
+
         files = {
             "file": (filename, file, "audio/mpeg"),
             "model": (None, "whisper-large-v3-turbo"),
@@ -52,11 +52,11 @@ class GroqTranscriber:
         return await loop.run_in_executor(None, self._transcribe_bytes, data, path.name, kwargs)
 
     def _transcribe_bytes(self, data: bytes, filename: str, kwargs: dict) -> dict:
-        import anyio  # local import to avoid mandatory dependency when unused
+        import anyio
 
         async def _inner() -> dict:
             async with httpx.AsyncClient(timeout=60.0) as client:
-                # Groq API requires all parameters to be sent as multipart/form-data fields (not JSON)
+
                 files = {
                     "file": (filename, data, "audio/mpeg"),
                     "model": (None, "whisper-large-v3-turbo"),

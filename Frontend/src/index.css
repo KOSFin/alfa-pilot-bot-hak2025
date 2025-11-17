@@ -1,5 +1,5 @@
 :root {
-  /* Alfa Bank Colors */
+
   --alfa-red: #EF3124;
   --alfa-black: #000000;
   --alfa-dark-gray: #1A1A1A;
@@ -9,7 +9,7 @@
   --alfa-bg: #0A0A0A;
   --alfa-card-bg: #1A1A1A;
   --alfa-hover: #2A2A2A;
-  
+
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   line-height: 1.5;
   font-weight: 400;

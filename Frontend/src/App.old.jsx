@@ -58,7 +58,7 @@ function App() {
   const [appModeState, setAppModeState] = useState(null)
 
   const appMode = useMemo(() => {
-    // Prioritize state, then URL parameter, then default to 'main'
+
     if (appModeState) return appModeState
     const params = new URLSearchParams(window.location.search)
     return params.get('mode') ?? 'main'
@@ -66,7 +66,7 @@ function App() {
 
   const changeAppMode = useCallback((mode) => {
     setAppModeState(mode)
-    // Update URL as well
+
     const newUrl = new URL(window.location)
     newUrl.searchParams.set('mode', mode)
     window.history.replaceState({}, '', newUrl)
@@ -146,7 +146,7 @@ function App() {
     fetchHealth().then(setHealthStatus).catch(() => setHealthStatus({ status: 'error' }))
     loadOnboardingState()
     refreshDocuments()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [telegramWebApp, appMode, loadOnboardingState])
 
   async function refreshDocuments() {
@@ -186,7 +186,7 @@ function App() {
     try {
       await saveCompanyProfile(payload)
       setCompanyStatus('Профиль сохранён! Уведомление отправлено в бот.')
-      
+
       if (isTelegram) {
         telegramWebApp?.sendData(JSON.stringify({ type: 'company_profile', user_id: userId }))
         setTimeout(() => {
@@ -194,8 +194,8 @@ function App() {
         }, 1500)
       } else {
         await loadOnboardingState()
-        // After saving profile, stay on the same page to show next step
-        // The onboarding view will automatically update to show the next step
+
+
       }
     } catch (error) {
       setCompanyStatus(error.message)
@@ -314,7 +314,7 @@ function App() {
     )
   }
 
-  // If user hasn't completed onboarding and we're not in a special mode, show onboarding view
+
   if (!onboardingComplete && appMode !== 'integration') {
     return (
       <OnboardingView
@@ -629,7 +629,7 @@ function IntegrationStub({ userId, telegramWebApp, isTelegram, changeAppMode }) 
           type="button"
           className="secondary"
           onClick={() => {
-            // Skip the integration for now and continue to main app
+
             changeAppMode('main');
           }}
         >
@@ -642,7 +642,7 @@ function IntegrationStub({ userId, telegramWebApp, isTelegram, changeAppMode }) 
   )
 }
 
-// Onboarding view component
+
 function OnboardingView({
   userId,
   telegramWebApp,

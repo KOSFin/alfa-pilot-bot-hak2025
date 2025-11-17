@@ -76,7 +76,7 @@ class OpenSearchVectorStore:
     async def search(self, query_vector: list[float], k: int = 5, source: str = "documents", user_id: str = None) -> list[dict[str, Any]]:
         index = self._index_documents if source == "documents" else self._index_dialogs
 
-        # Build query with optional user filter
+
         query_body = {
             "size": k,
             "query": {
@@ -89,7 +89,7 @@ class OpenSearchVectorStore:
             },
         }
 
-        # Add user filter if specified
+
         if user_id is not None:
             query_body["query"] = {
                 "bool": {

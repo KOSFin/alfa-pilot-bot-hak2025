@@ -15,20 +15,20 @@ async def set_language_callback(callback_query: CallbackQuery) -> None:
     lang_code = callback_query.data.split("_")[-1]
     user_id = str(callback_query.from_user.id)
 
-    # Update user profile with selected language
+
     store = RedisStore()
     profile = await store.get_json(f"company-profile:{user_id}") or {}
     profile["language"] = lang_code
     await store.set_json(f"company-profile:{user_id}", profile)
 
-    # Send confirmation message and update the keyboard
+
     lang_names = {
         "ru": "Русский",
         "en": "English"
     }
     lang_name = lang_names.get(lang_code, lang_code)
 
-    # Create a keyboard to go back to the main menu
+
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text="Продолжить", callback_data="go_back_profile")

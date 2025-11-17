@@ -85,7 +85,6 @@ export default function Documents({ userId, onboardingComplete }) {
           </div>
         </div>
 
-        {/* Upload Form */}
         <form onSubmit={handleUpload} style={{ marginTop: '20px' }}>
           <div className="form-field">
             <label className="form-field__label">Файл</label>
@@ -146,7 +145,6 @@ export default function Documents({ userId, onboardingComplete }) {
         </form>
       </div>
 
-      {/* Document List */}
       <div className="card">
         <div className="card__header">
           <h3 className="card__title">Список документов</h3>

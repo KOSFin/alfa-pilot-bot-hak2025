@@ -47,7 +47,7 @@ async def configure_webhook(bot: Bot, dispatcher: Dispatcher, settings) -> bool:
         return True
     except TelegramBadRequest as exc:
         logger.error("Failed to configure Telegram webhook at %s: %s", webhook_url, exc)
-    except Exception as exc:  # pragma: no cover - network failure or other runtime issue
+    except Exception as exc:
         logger.exception("Unexpected error while configuring Telegram webhook: %s", exc)
     return False
 
@@ -68,15 +68,15 @@ async def lifespan(app: FastAPI):
 
     try:
         storage = RedisStorage.from_url(settings.redis_url)
-        await storage.redis.ping()  # type: ignore[attr-defined]
+        await storage.redis.ping()
         logger.info("FSM storage connected to Redis")
-    except Exception as exc:  # pragma: no cover - network failure
+    except Exception as exc:
         logger.warning("Redis FSM storage unavailable, falling back to in-memory storage: %s", exc)
         storage = MemoryStorage()
 
     dispatcher = Dispatcher(storage=storage)
 
-    from bot.handlers import setup_handlers  # local import to avoid circular
+    from bot.handlers import setup_handlers
 
     dispatcher.include_router(setup_handlers())
     bot = Bot(token=settings.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
