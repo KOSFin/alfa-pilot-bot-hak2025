@@ -1,7 +1,3 @@
-docker build -t alfa-pilot-backend .
-docker run --env-file .env -p 8000:8000 alfa-pilot-backend
-docker build -t alfa-pilot-frontend .
-docker run -p 8080:80 -e VITE_API_BASE_URL="http://backend-host:8000/api" alfa-pilot-frontend
 # Alfa HAK Copilot — автономный AI-калькулятор для Альфа-Бизнеса
 
 ![Status](https://img.shields.io/badge/status-24%2F7%20online-brightgreen) ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python) ![FastAPI](https://img.shields.io/badge/FastAPI-ready-009688?logo=fastapi) ![aiogram](https://img.shields.io/badge/aiogram-telegram-blue?logo=telegram) ![React](https://img.shields.io/badge/React%20%2B%20Vite-36D6E7?logo=react) ![OpenSearch](https://img.shields.io/badge/OpenSearch-vector%20DB-005EB8?logo=amazon-opensearch-service&logoColor=white) ![Redis](https://img.shields.io/badge/Redis-sessions-C92D2D?logo=redis&logoColor=white) ![Gemini](https://img.shields.io/badge/AI-Gemini_2.5-black?logo=google) ![Groq](https://img.shields.io/badge/Voice-Groq_whisper--large--v3-orange) ![Docker](https://img.shields.io/badge/Docker-production-2496ED?logo=docker)
