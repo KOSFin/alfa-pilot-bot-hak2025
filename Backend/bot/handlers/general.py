@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from textwrap import dedent
 
@@ -14,6 +15,7 @@ from app.config import get_settings
 from app.services.storage.redis_store import RedisStore
 
 router = Router()
+logger = logging.getLogger(__name__)
 
 
 def build_start_keyboard() -> InlineKeyboardMarkup:
@@ -28,9 +30,12 @@ def build_start_keyboard() -> InlineKeyboardMarkup:
 
 @router.message(CommandStart())
 async def cmd_start(message: Message) -> None:
+    logger.info("Handling /start for user %s", message.from_user.id if message.from_user else "unknown")
     text = dedent(
         """
         Привет! Я Alfa Pilot — умный ассистент для финансовых расчётов и советов.
+
+        Нажмите кнопку ниже, чтобы открыть мини-приложение и заполнить профиль компании. После сохранения профиль подтянется в бота, и вы сможете продолжить диалог прямо здесь.
 
         1. Загрузите документы и материалы компании через мини-приложение.
         2. Подключите Альфа-Бизнес (пока заглушка) для синхронизации операций.
@@ -98,6 +103,8 @@ async def handle_web_app_data(message: Message) -> None:
         "key_systems": payload.get("key_systems"),
         "goals": payload.get("goals"),
     }
+
+    logger.info("Received company profile from web app for user %s", profile["user_id"])
 
     await store.set_json(f"company-profile:{profile['user_id']}", profile)
 

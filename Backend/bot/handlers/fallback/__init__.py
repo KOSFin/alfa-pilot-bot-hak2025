@@ -12,6 +12,8 @@ router = Router()
 
 @router.message(F.text)
 async def handle_text(message: Message) -> None:
+    if message.text and message.text.startswith("/"):
+        return
     settings = get_settings()
     async with httpx.AsyncClient(timeout=120.0) as client:
         payload = {
