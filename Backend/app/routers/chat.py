@@ -80,7 +80,7 @@ async def post_message(
     # Get company profile info to potentially enrich the search
     company_info = await _get_company_profile_info(payload.user_id, store)
     
-    knowledge = await knowledge_base.search(payload.content)
+    knowledge = await knowledge_base.search(payload.content, user_id=payload.user_id)
     
     # If we have company info and the query seems to be related to the company,
     # we might want to add company info to the knowledge hits

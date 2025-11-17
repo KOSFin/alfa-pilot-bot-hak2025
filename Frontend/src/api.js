@@ -4,15 +4,20 @@ const defaultHeaders = {
   'Content-Type': 'application/json',
 };
 
-export async function fetchDocuments() {
-  const response = await fetch(`${API_BASE_URL}/knowledge/documents`);
+export async function fetchDocuments(userId) {
+  const url = userId
+    ? `${API_BASE_URL}/knowledge/documents?user_id=${encodeURIComponent(userId)}`
+    : `${API_BASE_URL}/knowledge/documents`;
+  const response = await fetch(url);
   if (!response.ok) {
     throw new Error('Не удалось загрузить документы');
   }
   return response.json();
 }
 
-export async function uploadDocument(formData) {
+export async function uploadDocument(formData, userId) {
+  // Add user_id to the form data
+  formData.append('user_id', userId);
   const response = await fetch(`${API_BASE_URL}/knowledge/documents`, {
     method: 'POST',
     body: formData,

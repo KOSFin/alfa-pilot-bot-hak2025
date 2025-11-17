@@ -73,21 +73,47 @@ class OpenSearchVectorStore:
         }
         await self._client.index(index=self._index_dialogs, id=dialog_id, body=body, refresh=True)
 
-    async def search(self, query_vector: list[float], k: int = 5, source: str = "documents") -> list[dict[str, Any]]:
+    async def search(self, query_vector: list[float], k: int = 5, source: str = "documents", user_id: str = None) -> list[dict[str, Any]]:
         index = self._index_documents if source == "documents" else self._index_dialogs
+
+        # Build query with optional user filter
+        query_body = {
+            "size": k,
+            "query": {
+                "knn": {
+                    "text_vector": {
+                        "vector": query_vector,
+                        "k": k,
+                    }
+                }
+            },
+        }
+
+        # Add user filter if specified
+        if user_id is not None:
+            query_body["query"] = {
+                "bool": {
+                    "must": [
+                        {
+                            "knn": {
+                                "text_vector": {
+                                    "vector": query_vector,
+                                    "k": k,
+                                }
+                            }
+                        },
+                        {
+                            "term": {
+                                "metadata.owner_id.keyword": user_id
+                            }
+                        }
+                    ]
+                }
+            }
+
         response = await self._client.search(
             index=index,
-            body={
-                "size": k,
-                "query": {
-                    "knn": {
-                        "text_vector": {
-                            "vector": query_vector,
-                            "k": k,
-                        }
-                    }
-                },
-            },
+            body=query_body,
         )
         hits = response.get("hits", {}).get("hits", [])
         return hits

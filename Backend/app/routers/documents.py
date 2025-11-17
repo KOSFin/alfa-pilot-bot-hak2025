@@ -54,6 +54,7 @@ def load_text_from_upload(file_path: Path, content_type: str) -> str:
 
 @router.post("/documents", response_model=DocumentSource)
 async def upload_document(
+    user_id: str = Form(...),
     file: UploadFile = File(...),
     title: str = Form(...),
     description: str | None = Form(None),
@@ -84,7 +85,7 @@ async def upload_document(
         title=title,
         description=description,
         category=category,
-        owner_id=None,
+        owner_id=user_id,
         size_bytes=destination.stat().st_size,
         content_type=file.content_type or "application/octet-stream",
         original_filename=file.filename,
@@ -102,13 +103,19 @@ async def upload_document(
 
 
 @router.get("/documents", response_model=list[DocumentSource])
-async def list_documents(store: RedisStore = Depends(get_document_store)) -> list[DocumentSource]:
+async def list_documents(
+    user_id: str | None = None,
+    store: RedisStore = Depends(get_document_store)
+) -> list[DocumentSource]:
     keys = await store.keys("doc:*")
     documents: list[DocumentSource] = []
     for key in keys:
         data = await store.get_json(key)
         if data:
-            documents.append(DocumentSource(**data))
+            doc = DocumentSource(**data)
+            # If user_id is provided, only return documents belonging to that user
+            if user_id is None or doc.owner_id == user_id:
+                documents.append(doc)
     documents.sort(key=lambda item: item.uploaded_at, reverse=True)
     return documents
 

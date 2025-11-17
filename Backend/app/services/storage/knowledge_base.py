@@ -53,13 +53,13 @@ class KnowledgeBase:
         await self._store.upsert_dialog(dialog_id, text, vector, metadata)
         return True
 
-    async def search(self, query: str, k: int = 5) -> KnowledgeSearchResponse:
+    async def search(self, query: str, k: int = 5, user_id: str = None) -> KnowledgeSearchResponse:
         try:
             vector = await self._gemini.embed_text(query, model=self._embedding_model)
         except EmbeddingServiceUnavailable as exc:
             logger.warning("Embedding unavailable for search '%s': %s", query, exc)
             return KnowledgeSearchResponse(hits=[], query=query, embedding_available=False)
-        hits = await self._store.search(vector, k=k)
+        hits = await self._store.search(vector, k=k, user_id=user_id)
         formatted = [
             {
                 "id": hit.get("_id"),

@@ -54,10 +54,22 @@ function App() {
   const userId = usePersistentUserId()
   const telegramWebApp = window.Telegram?.WebApp
   const isTelegram = Boolean(telegramWebApp)
+  const [appModeState, setAppModeState] = useState(null)
+
   const appMode = useMemo(() => {
+    // Prioritize state, then URL parameter, then default to 'main'
+    if (appModeState) return appModeState
     const params = new URLSearchParams(window.location.search)
     return params.get('mode') ?? 'main'
-  }, [])
+  }, [appModeState])
+
+  const changeAppMode = useCallback((mode) => {
+    setAppModeState(mode)
+    // Update URL as well
+    const newUrl = new URL(window.location)
+    newUrl.searchParams.set('mode', mode)
+    window.history.replaceState({}, '', newUrl)
+  }, [setAppModeState])
   const [documents, setDocuments] = useState([])
   const [chatInput, setChatInput] = useState('')
   const [chatHistory, setChatHistory] = useState([
@@ -137,7 +149,7 @@ function App() {
 
   async function refreshDocuments() {
     try {
-      const list = await fetchDocuments()
+      const list = await fetchDocuments(userId)
       setDocuments(list)
     } catch (error) {
       console.error(error)
@@ -179,6 +191,8 @@ function App() {
         }, 1500)
       } else {
         await loadOnboardingState()
+        // After saving profile, stay on the same page to show next step
+        // The onboarding view will automatically update to show the next step
       }
     } catch (error) {
       setCompanyStatus(error.message)
@@ -202,7 +216,7 @@ function App() {
     const formData = new FormData(form)
     try {
       setDocUploadProgress('Загружаем документ...')
-      const uploaded = await uploadDocument(formData)
+      const uploaded = await uploadDocument(formData, userId)
       if (uploaded.status === 'indexed') {
         setDocUploadProgress('Документ загружен и отправлен в индексацию.')
       } else {
@@ -292,8 +306,28 @@ function App() {
         userId={userId}
         telegramWebApp={telegramWebApp}
         isTelegram={isTelegram}
+        changeAppMode={changeAppMode}
       />
     )
+  }
+
+  // If user hasn't completed onboarding and we're not in a special mode, show onboarding view
+  if (!onboardingComplete && appMode !== 'integration') {
+    return (
+      <OnboardingView
+        userId={userId}
+        telegramWebApp={telegramWebApp}
+        isTelegram={isTelegram}
+        companyForm={companyForm}
+        companyStatus={companyStatus}
+        isSavingCompany={isSavingCompany}
+        onCompanyFieldChange={handleCompanyFieldChange}
+        onCompanySubmit={handleCompanySubmit}
+        onboardingState={onboardingState}
+        integrationConnected={integrationConnected}
+        changeAppMode={changeAppMode}
+      />
+    );
   }
 
   return (
@@ -533,7 +567,7 @@ function App() {
   )
 }
 
-function IntegrationStub({ userId, telegramWebApp, isTelegram }) {
+function IntegrationStub({ userId, telegramWebApp, isTelegram, changeAppMode }) {
   const [status, setStatus] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -571,17 +605,163 @@ function IntegrationStub({ userId, telegramWebApp, isTelegram }) {
           <strong>Последний шаг онбординга!</strong>
         </p>
         <p>
-          Подключение позволит боту анализировать ваши финансовые операции и давать более точные рекомендации. 
+          Подключение позволит боту анализировать ваши финансовые операции и давать более точные рекомендации.
           Нажмите кнопку ниже — это займёт всего 10 секунд.
         </p>
         <button type="button" className="primary" onClick={handleConnect} disabled={isSubmitting}>
           {isSubmitting ? 'Подключаем...' : 'Подключить Альфа-Бизнес'}
+        </button>
+        <button
+          type="button"
+          className="secondary"
+          onClick={() => {
+            // Skip the integration for now and continue to main app
+            changeAppMode('main');
+          }}
+        >
+          Пропустить и продолжить
         </button>
         {status && <p className="helper-text">{status}</p>}
         {!isTelegram && <p className="helper-text">⚠️ Эта страница рассчитана на запуск из Telegram мини-приложения.</p>}
       </main>
     </div>
   )
+}
+
+// Onboarding view component
+function OnboardingView({
+  userId,
+  telegramWebApp,
+  isTelegram,
+  companyForm,
+  companyStatus,
+  isSavingCompany,
+  onCompanyFieldChange,
+  onCompanySubmit,
+  onboardingState,
+  integrationConnected,
+  changeAppMode
+}) {
+  const profileSaved = Boolean(onboardingState?.profile);
+
+  return (
+    <div className="onboarding-screen">
+      <header className="onboarding-screen__header">
+        <h1>👋 Добро пожаловать!</h1>
+        <p>Для начала работы заполните профиль компании</p>
+      </header>
+
+      <main className="onboarding-screen__body">
+        {!profileSaved ? (
+          <div className="onboarding-step">
+            <h2>Шаг 1: Профиль компании</h2>
+            <p>Заполните краткую информацию о вашей компании, чтобы ИИ учитывал контекст вашего бизнеса.</p>
+
+            <form className="profile-form" onSubmit={onCompanySubmit}>
+              <label className="form-field">
+                <span>Название компании *</span>
+                <input
+                  type="text"
+                  name="company_name"
+                  placeholder="Например, ООО «Альфа»"
+                  value={companyForm.company_name}
+                  onChange={onCompanyFieldChange}
+                  required
+                />
+              </label>
+
+              <label className="form-field">
+                <span>Индустрия</span>
+                <input
+                  type="text"
+                  name="industry"
+                  placeholder="Финансы, логистика, IT..."
+                  value={companyForm.industry}
+                  onChange={onCompanyFieldChange}
+                />
+              </label>
+
+              <label className="form-field">
+                <span>Количество сотрудников</span>
+                <input
+                  type="number"
+                  min="0"
+                  name="employees"
+                  placeholder="Например, 120"
+                  value={companyForm.employees}
+                  onChange={onCompanyFieldChange}
+                />
+              </label>
+
+              <label className="form-field">
+                <span>Годовая выручка</span>
+                <input
+                  type="text"
+                  name="annual_revenue"
+                  placeholder="Диапазон или оценка"
+                  value={companyForm.annual_revenue}
+                  onChange={onCompanyFieldChange}
+                />
+              </label>
+
+              <label className="form-field">
+                <span>Ключевые системы и сервисы</span>
+                <input
+                  type="text"
+                  name="key_systems"
+                  placeholder="CRM, ERP, учётные системы"
+                  value={companyForm.key_systems}
+                  onChange={onCompanyFieldChange}
+                />
+              </label>
+
+              <label className="form-field">
+                <span>Цели и ожидания</span>
+                <textarea
+                  name="goals"
+                  rows={3}
+                  placeholder="Опишите, что важно автоматизировать"
+                  value={companyForm.goals}
+                  onChange={onCompanyFieldChange}
+                />
+              </label>
+
+              <button type="submit" className="primary" disabled={isSavingCompany}>
+                {isSavingCompany ? 'Сохраняем...' : 'Сохранить и продолжить'}
+              </button>
+
+              {companyStatus && <p className="status-message">{companyStatus}</p>}
+            </form>
+          </div>
+        ) : !integrationConnected ? (
+          <div className="onboarding-step">
+            <h2>Шаг 2: Подключение интеграции</h2>
+            <p>Последний шаг - подключите Альфа-Бизнес для анализа ваших финансовых операций</p>
+
+            <IntegrationStub
+              userId={userId}
+              telegramWebApp={telegramWebApp}
+              isTelegram={isTelegram}
+              changeAppMode={changeAppMode}
+            />
+          </div>
+        ) : (
+          <div className="onboarding-step">
+            <h2>🎉 Онбординг завершён!</h2>
+            <p>Теперь вы можете использовать все возможности Alfa Pilot</p>
+            <button
+              className="primary"
+              onClick={() => {
+                changeAppMode('main');
+              }}
+            >
+              Перейти к основному интерфейсу
+            </button>
+          </div>
+        )}
+      </main>
+    </div>
+  );
 }
 
 export default App
