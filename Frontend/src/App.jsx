@@ -28,19 +28,29 @@ function usePersistentUserId() {
     const tg = window.Telegram?.WebApp
     const telegramUserId = tg?.initDataUnsafe?.user?.id
     if (telegramUserId) {
+      console.log('Using Telegram user ID:', telegramUserId)
       return String(telegramUserId)
     }
+    // For development/testing without Telegram
     const storageKey = 'alfa-pilot-user-id'
-    const stored = window.localStorage.getItem(storageKey)
+    let stored = window.localStorage.getItem(storageKey)
+    
+    // If stored value is UUID, clear it and use demo ID
+    if (stored && stored.includes('-')) {
+      console.warn('Found UUID in storage, clearing it')
+      window.localStorage.removeItem(storageKey)
+      stored = null
+    }
+    
     if (stored) {
       return stored
     }
-    const uuid = window.crypto && typeof window.crypto.randomUUID === 'function'
-      ? window.crypto.randomUUID()
-      : Math.random().toString(36).slice(2)
-    const generated = uuid
-    window.localStorage.setItem(storageKey, generated)
-    return generated
+    
+    // Generate demo user ID (numeric) for non-Telegram testing
+    const demoId = Math.floor(Math.random() * 1000000000).toString()
+    console.log('Generated demo user ID:', demoId)
+    window.localStorage.setItem(storageKey, demoId)
+    return demoId
   }, [])
 }
 

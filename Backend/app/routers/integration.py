@@ -39,7 +39,27 @@ async def _notify_bot_profile_saved(request: Request, user_id: str) -> None:
     try:
         from aiogram import Bot
         from textwrap import dedent
+        
+        logger.info("Starting notification for profile saved: user_id=%s", user_id)
+        
         bot: Bot = request.app.state.bot
+        if not bot:
+            logger.error("Bot instance not available in app state")
+            return
+        
+        # Check if user_id is numeric (Telegram ID)
+        try:
+            telegram_id = int(user_id)
+        except ValueError:
+            # If not numeric, try to find mapping in Redis
+            logger.warning("user_id is not numeric: %s, checking for Telegram ID mapping", user_id)
+            store = RedisStore()
+            telegram_id_str = await store.get_json(f"user-mapping:{user_id}")
+            if not telegram_id_str:
+                logger.error("No Telegram ID mapping found for user_id: %s", user_id)
+                return
+            telegram_id = int(telegram_id_str)
+            logger.info("Found Telegram ID mapping: %s -> %s", user_id, telegram_id)
         
         text = dedent(
             """
@@ -51,12 +71,16 @@ async def _notify_bot_profile_saved(request: Request, user_id: str) -> None:
         ).strip()
         
         from bot.utils.onboarding import OnboardingStage, build_keyboard_for_stage
+        
+        logger.info("Sending message to Telegram user %s", telegram_id)
         await bot.send_message(
-            chat_id=int(user_id),
+            chat_id=telegram_id,
             text=text,
             reply_markup=build_keyboard_for_stage(OnboardingStage.INTEGRATION)
         )
-        logger.info("Sent profile saved notification to user %s", user_id)
+        logger.info("Successfully sent profile saved notification to user %s", telegram_id)
+    except ValueError as exc:
+        logger.error("Invalid user_id format: %s - %s", user_id, exc)
     except Exception as exc:
         logger.exception("Failed to notify bot about profile save for user %s: %s", user_id, exc)
 
@@ -66,7 +90,27 @@ async def _notify_bot_integration_connected(request: Request, user_id: str) -> N
     try:
         from aiogram import Bot
         from textwrap import dedent
+        
+        logger.info("Starting notification for integration connected: user_id=%s", user_id)
+        
         bot: Bot = request.app.state.bot
+        if not bot:
+            logger.error("Bot instance not available in app state")
+            return
+        
+        # Check if user_id is numeric (Telegram ID)
+        try:
+            telegram_id = int(user_id)
+        except ValueError:
+            # If not numeric, try to find mapping in Redis
+            logger.warning("user_id is not numeric: %s, checking for Telegram ID mapping", user_id)
+            store = RedisStore()
+            telegram_id_str = await store.get_json(f"user-mapping:{user_id}")
+            if not telegram_id_str:
+                logger.error("No Telegram ID mapping found for user_id: %s", user_id)
+                return
+            telegram_id = int(telegram_id_str)
+            logger.info("Found Telegram ID mapping: %s -> %s", user_id, telegram_id)
         
         text = dedent(
             """
@@ -93,12 +137,16 @@ async def _notify_bot_integration_connected(request: Request, user_id: str) -> N
         ).strip()
         
         from bot.utils.onboarding import OnboardingStage, build_keyboard_for_stage
+        
+        logger.info("Sending message to Telegram user %s", telegram_id)
         await bot.send_message(
-            chat_id=int(user_id),
+            chat_id=telegram_id,
             text=text,
             reply_markup=build_keyboard_for_stage(OnboardingStage.READY)
         )
-        logger.info("Sent integration connected notification to user %s", user_id)
+        logger.info("Successfully sent integration connected notification to user %s", telegram_id)
+    except ValueError as exc:
+        logger.error("Invalid user_id format: %s - %s", user_id, exc)
     except Exception as exc:
         logger.exception("Failed to notify bot about integration for user %s: %s", user_id, exc)
 
