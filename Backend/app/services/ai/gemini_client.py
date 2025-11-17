@@ -24,7 +24,7 @@ class GeminiClient:
     def __init__(self) -> None:
         settings = get_settings()
         genai.configure(api_key=settings.gemini_api_key)
-        self._model_name_default = "gemini-1.5-flash"
+        self._model_name_default = "gemini-2.5-pro"
 
     async def generate_content(self, prompt: str, *, model: str | None = None, tools: list[dict[str, Any]] | None = None) -> str:
         model_name = model or self._model_name_default
