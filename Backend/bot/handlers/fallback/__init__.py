@@ -37,7 +37,7 @@ async def handle_text(message: Message) -> None:
     reply_text = data.get("reply", {}).get("content", "")
     plan_info = data.get("reply", {}).get("metadata", {})
 
-    if plan_id := plan_info.get("plan_id"):
+    if plan_info and (plan_id := plan_info.get("plan_id")):
         await message.answer(f"{reply_text}\n\nДля запуска расчёта нажмите /execute_{plan_id}")
     else:
         await message.answer(reply_text)
