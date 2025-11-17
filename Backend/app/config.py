@@ -51,6 +51,7 @@ class Settings(BaseSettings):
 
 
     enable_tool_audit: bool = Field(default=True)
+    enable_telegram_bot: bool = Field(default=True, alias="ENABLE_TELEGRAM_BOT")
 
     def ensure_directories(self) -> None:
         """Ensure that runtime directories exist."""

@@ -12,8 +12,9 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.storage.redis import RedisStorage
 from aiogram.types import Update
-from fastapi import APIRouter, FastAPI, Request
+from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 
 from .config import get_settings
 from .routers import chat, documents, health, integration
@@ -66,29 +67,36 @@ async def lifespan(app: FastAPI):
     conversation_manager = ConversationManager()
     calculator_engine = CalculatorEngine()
 
-    try:
-        storage = RedisStorage.from_url(settings.redis_url)
-        await storage.redis.ping()
-        logger.info("FSM storage connected to Redis")
-    except Exception as exc:
-        logger.warning("Redis FSM storage unavailable, falling back to in-memory storage: %s", exc)
-        storage = MemoryStorage()
-
-    dispatcher = Dispatcher(storage=storage)
-
-    from bot.handlers import setup_handlers
-
-    dispatcher.include_router(setup_handlers())
-    bot = Bot(token=settings.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-
+    bot: Bot | None = None
+    dispatcher: Dispatcher | None = None
+    storage: RedisStorage | MemoryStorage | None = None
     polling_task: asyncio.Task | None = None
-    if not await configure_webhook(bot, dispatcher, settings):
-        logger.info("Falling back to long polling mode for Telegram updates.")
+
+    if settings.enable_telegram_bot:
         try:
-            await bot.delete_webhook(drop_pending_updates=True)
-        except TelegramBadRequest as exc:
-            logger.warning("Could not remove webhook before starting polling: %s", exc)
-        polling_task = asyncio.create_task(dispatcher.start_polling(bot))
+            storage = RedisStorage.from_url(settings.redis_url)
+            await storage.redis.ping()
+            logger.info("FSM storage connected to Redis")
+        except Exception as exc:
+            logger.warning("Redis FSM storage unavailable, falling back to in-memory storage: %s", exc)
+            storage = MemoryStorage()
+
+        dispatcher = Dispatcher(storage=storage)
+
+        from bot.handlers import setup_handlers
+
+        dispatcher.include_router(setup_handlers())
+        bot = Bot(token=settings.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+
+        if not await configure_webhook(bot, dispatcher, settings):
+            logger.info("Falling back to long polling mode for Telegram updates.")
+            try:
+                await bot.delete_webhook(drop_pending_updates=True)
+            except TelegramBadRequest as exc:
+                logger.warning("Could not remove webhook before starting polling: %s", exc)
+            polling_task = asyncio.create_task(dispatcher.start_polling(bot))
+    else:
+        logger.info("Telegram bot disabled via ENABLE_TELEGRAM_BOT=false. Skipping bot startup.")
 
     app.state.settings = settings
     app.state.knowledge_base = knowledge_base
@@ -106,8 +114,10 @@ async def lifespan(app: FastAPI):
         with suppress(asyncio.CancelledError):
             await polling_task
 
-    await bot.session.close()
-    await storage.close()
+    if bot:
+        await bot.session.close()
+    if storage:
+        await storage.close()
     await knowledge_base.aclose()
 
 
@@ -122,9 +132,9 @@ def with_prefix(path: str) -> str:
 app = FastAPI(
     title=settings.project_name,
     lifespan=lifespan,
-    docs_url=with_prefix("/docs"),
-    redoc_url=with_prefix("/redoc"),
-    openapi_url=with_prefix("/openapi.json"),
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
 )
 
 app.add_middleware(
@@ -143,13 +153,34 @@ api_router.include_router(integration.router)
 
 app.include_router(api_router, prefix=settings.api_prefix)
 
+prefixed_docs = with_prefix("/docs")
+if prefixed_docs != "/docs":
+    @app.get(prefixed_docs, include_in_schema=False)
+    async def redirect_docs() -> RedirectResponse:
+        return RedirectResponse(url="/docs")
+
+prefixed_redoc = with_prefix("/redoc")
+if prefixed_redoc != "/redoc":
+    @app.get(prefixed_redoc, include_in_schema=False)
+    async def redirect_redoc() -> RedirectResponse:
+        return RedirectResponse(url="/redoc")
+
+prefixed_openapi = with_prefix("/openapi.json")
+if prefixed_openapi != "/openapi.json":
+    @app.get(prefixed_openapi, include_in_schema=False)
+    async def redirect_openapi() -> RedirectResponse:
+        return RedirectResponse(url="/openapi.json")
+
 
 @app.post("/telegram/webhook")
 async def telegram_webhook(request: Request) -> dict[str, str]:
+    bot: Bot | None = request.app.state.bot
+    dispatcher: Dispatcher | None = request.app.state.dispatcher
+    if not bot or not dispatcher:
+        raise HTTPException(status_code=503, detail="Telegram bot is disabled")
+
     data = await request.json()
     update = Update.model_validate(data)
-    bot: Bot = request.app.state.bot
-    dispatcher: Dispatcher = request.app.state.dispatcher
     await dispatcher.feed_update(bot, update)
     return {"status": "accepted"}
 
