@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     environment: Literal["local", "dev", "prod"] = Field(default="local")
     api_prefix: str = Field(default="/api")
     api_base_url: str = Field(default="http://localhost:8000/api")
+    webhook_base_url: Optional[str] = Field(default=None, alias="WEBHOOK_BASE_URL")
+    webhook_secret_token: Optional[str] = Field(default=None, alias="WEBHOOK_SECRET_TOKEN")
 
     # Bot & integrations
     bot_token: str = Field(alias="BOT_TOKEN")

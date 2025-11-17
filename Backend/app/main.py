@@ -1,12 +1,14 @@
 """Entry point for FastAPI + aiogram backend."""
 from __future__ import annotations
 
+import asyncio
 import logging
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.storage.redis import RedisStorage
 from aiogram.types import Update
@@ -22,6 +24,32 @@ from .services.storage.knowledge_base import KnowledgeBase
 from .utils.logging import setup_logging
 
 logger = logging.getLogger(__name__)
+
+
+async def configure_webhook(bot: Bot, dispatcher: Dispatcher, settings) -> bool:
+    webhook_base = settings.webhook_base_url
+    if not webhook_base:
+        logger.warning("WEBHOOK_BASE_URL is not configured; Telegram webhook will not be set.")
+        return False
+
+    webhook_url = f"{webhook_base.rstrip('/')}/telegram/webhook"
+    webhook_kwargs = {
+        "url": webhook_url,
+        "drop_pending_updates": True,
+        "allowed_updates": dispatcher.resolve_used_update_types(),
+    }
+    if settings.webhook_secret_token:
+        webhook_kwargs["secret_token"] = settings.webhook_secret_token
+
+    try:
+        await bot.set_webhook(**webhook_kwargs)
+        logger.info("Telegram webhook configured: %s", webhook_url)
+        return True
+    except TelegramBadRequest as exc:
+        logger.error("Failed to configure Telegram webhook at %s: %s", webhook_url, exc)
+    except Exception as exc:  # pragma: no cover - network failure or other runtime issue
+        logger.exception("Unexpected error while configuring Telegram webhook: %s", exc)
+    return False
 
 
 @asynccontextmanager
@@ -53,6 +81,15 @@ async def lifespan(app: FastAPI):
     dispatcher.include_router(setup_handlers())
     bot = Bot(token=settings.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 
+    polling_task: asyncio.Task | None = None
+    if not await configure_webhook(bot, dispatcher, settings):
+        logger.info("Falling back to long polling mode for Telegram updates.")
+        try:
+            await bot.delete_webhook(drop_pending_updates=True)
+        except TelegramBadRequest as exc:
+            logger.warning("Could not remove webhook before starting polling: %s", exc)
+        polling_task = asyncio.create_task(dispatcher.start_polling(bot))
+
     app.state.settings = settings
     app.state.knowledge_base = knowledge_base
     app.state.orchestrator = orchestrator
@@ -60,8 +97,14 @@ async def lifespan(app: FastAPI):
     app.state.calculator_engine = calculator_engine
     app.state.bot = bot
     app.state.dispatcher = dispatcher
+    app.state.polling_task = polling_task
 
     yield
+
+    if polling_task:
+        polling_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await polling_task
 
     await bot.session.close()
     await storage.close()

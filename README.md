@@ -34,7 +34,7 @@
 	npm run dev
 	```
 
-Backend поднимет FastAPI сервер на `http://localhost:8000`, frontend будет доступен на `http://localhost:5173`. Настройте переменные `.env` в `Backend/.env` (бот, ключи API, URL Redis и OpenSearch).
+Backend поднимет FastAPI сервер на `http://localhost:8000`, frontend будет доступен на `http://localhost:5173`. Настройте переменные `.env` в `Backend/.env` (бот, ключи API, URL Redis и OpenSearch). Укажите `WEBHOOK_BASE_URL` (например, `https://your-domain`) и, при необходимости, `WEBHOOK_SECRET_TOKEN`, чтобы бот работал через webhook; без них backend автоматически переключится на long polling, что удобно для локальной отладки.
 
 ## Работа системы
 
