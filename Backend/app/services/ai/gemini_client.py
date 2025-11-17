@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from copy import deepcopy
 from typing import Any
 
 import google.generativeai as genai
@@ -36,12 +37,15 @@ class GeminiClient:
     async def generate_structured(self, prompt: str, *, schema: dict[str, Any], model: str | None = None) -> dict[str, Any]:
         model_name = model or self._model_name_default
         logger.debug("Generating structured content with schema via Gemini model=%s", model_name)
+        generation_schema = self._sanitize_schema(schema)
+        if generation_schema != schema:
+            logger.debug("Sanitized response schema before calling Gemini")
         response = await asyncio.to_thread(
             lambda: genai.GenerativeModel(model_name).generate_content(
                 prompt,
                 generation_config={
                     "response_mime_type": "application/json",
-                    "response_schema": schema,
+                    "response_schema": generation_schema,
                 },
             )
         )
@@ -71,3 +75,21 @@ class GeminiClient:
         if not embedding:
             raise EmbeddingServiceUnavailable("Embedding payload missing")
         return embedding
+
+    @staticmethod
+    def _sanitize_schema(schema: dict[str, Any]) -> dict[str, Any]:
+        """Remove JSON Schema fields unsupported by Gemini response_schema."""
+
+        def _clean(node: Any) -> Any:
+            if isinstance(node, dict):
+                cleaned: dict[str, Any] = {}
+                for key, value in node.items():
+                    if key == "additionalProperties":
+                        continue
+                    cleaned[key] = _clean(value)
+                return cleaned
+            if isinstance(node, list):
+                return [_clean(item) for item in node]
+            return node
+
+        return _clean(deepcopy(schema))

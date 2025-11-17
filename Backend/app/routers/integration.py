@@ -48,6 +48,12 @@ async def _notify_bot_profile_saved(request: Request, user_id: str) -> None:
         if not (user_id and str(user_id).lstrip("-+ ").isdigit()):
             logger.warning("Skip profile notification: user_id '%s' is not numeric", user_id)
             return
+
+        store = RedisStore()
+        integration_state = await store.get_json(f"integration:alpha-business:{user_id}")
+        if integration_state and integration_state.get("status") == "connected":
+            logger.info("Skip profile notification: integration already connected for user %s", user_id)
+            return
         
         text = dedent(
             """
@@ -103,7 +109,7 @@ async def _notify_bot_integration_connected(request: Request, user_id: str) -> N
             Через веб-приложение можно загрузить документы (отчёты, регламенты, контракты). Я буду использовать их при ответах.
             
             3️⃣ <b>Выполняйте расчёты</b>
-            Если я предложу расчётный план, вы сможете выполнить его командой /execute_<id>
+            Если я предложу расчётный план, вы сможете выполнить его командой /execute_&lt;id&gt;
             
             4️⃣ <b>Используйте веб-интерфейс</b>
             Для работы с документами и детального диалога откройте веб-приложение.
