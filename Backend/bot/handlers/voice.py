@@ -62,6 +62,15 @@ async def handle_voice(message: Message) -> None:
     if not allowed:
         return
 
+    # Get user's language preference from profile
+    user_id = str(message.from_user.id)
+    from app.services.storage.redis_store import RedisStore
+    store = RedisStore()
+    profile = await store.get_json(f"company-profile:{user_id}")
+    language = "ru"  # Default language
+    if profile and profile.get("language"):
+        language = profile["language"]
+
     settings = get_settings()
     bot = message.bot
     file = await bot.get_file(voice.file_id)
@@ -70,7 +79,7 @@ async def handle_voice(message: Message) -> None:
     buffer.seek(0)  # Reset buffer position to the beginning
 
     transcriber = GroqTranscriber()
-    transcription = await transcriber.transcribe(buffer, filename="voice.ogg", language="ru")
+    transcription = await transcriber.transcribe(buffer, filename="voice.ogg", language=language)
     await transcriber.aclose()
 
     text = transcription.get("text")

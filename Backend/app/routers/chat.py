@@ -1,6 +1,7 @@
 """Chat orchestration endpoints."""
 from __future__ import annotations
 
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -19,6 +20,8 @@ from ..services.calculators.engine import CalculatorEngine
 from ..services.conversation.manager import ConversationManager
 from ..services.storage.knowledge_base import KnowledgeBase
 from ..services.storage.redis_store import RedisStore
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -209,3 +212,22 @@ async def execute_plan(
         knowledge_hits=knowledge_hits,
         tool_results=tool_results,
     )
+
+
+@router.delete("/context/{user_id}")
+async def reset_context(
+    user_id: str,
+    conversation: ConversationManager = Depends(get_conversation),
+    store: RedisStore = Depends(get_store),
+) -> dict[str, str]:
+    """Reset conversation context for the specified user."""
+    try:
+        # Clear conversation history for the user
+        key = f"dialog:{user_id}"
+        await store.delete(key)
+
+        # Return success response
+        return {"status": "success", "message": f"Context for user {user_id} has been reset"}
+    except Exception as e:
+        logger.error(f"Error resetting context for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to reset context")

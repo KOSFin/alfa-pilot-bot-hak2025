@@ -17,6 +17,7 @@ class CompanyProfile(BaseModel):
     annual_revenue: Optional[str] = Field(default=None, description="Revenue description or range")
     key_systems: Optional[str] = Field(default=None, description="Key systems or tools used")
     goals: Optional[str] = Field(default=None, description="Main goals user expects from the assistant")
+    language: Optional[str] = Field(default="ru", description="Preferred language for transcription and interaction")
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
