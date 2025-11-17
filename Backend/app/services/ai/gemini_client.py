@@ -6,10 +6,15 @@ import logging
 from typing import Any
 
 import google.generativeai as genai
+from google.api_core import exceptions as google_exceptions
 
 from ...config import get_settings
 
 logger = logging.getLogger(__name__)
+
+
+class EmbeddingServiceUnavailable(RuntimeError):
+    """Raised when Gemini embeddings are not available in the current environment."""
 
 
 class GeminiClient:
@@ -53,5 +58,16 @@ class GeminiClient:
 
     async def embed_text(self, text: str, *, model: str = "text-embedding-004") -> list[float]:
         logger.debug("Embedding text via Gemini model=%s", model)
-        response = await asyncio.to_thread(lambda: genai.embed_content(model=model, content=text))
-        return response["embedding"]
+        try:
+            response = await asyncio.to_thread(lambda: genai.embed_content(model=model, content=text))
+        except google_exceptions.GoogleAPIError as exc:  # pragma: no cover - network dependent
+            logger.warning("Gemini embedding rejected request: %s", exc)
+            raise EmbeddingServiceUnavailable("Embedding service unavailable") from exc
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.exception("Unexpected embedding failure")
+            raise EmbeddingServiceUnavailable("Embedding service error") from exc
+
+        embedding = response.get("embedding") if isinstance(response, dict) else None
+        if not embedding:
+            raise EmbeddingServiceUnavailable("Embedding payload missing")
+        return embedding

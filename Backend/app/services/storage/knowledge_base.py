@@ -6,7 +6,7 @@ import logging
 from typing import Iterable
 
 from ...schemas.knowledge import DocumentSource, KnowledgeSearchResponse
-from ..ai.gemini_client import GeminiClient
+from ..ai.gemini_client import EmbeddingServiceUnavailable, GeminiClient
 from .opensearch_store import OpenSearchVectorStore
 
 logger = logging.getLogger(__name__)
@@ -27,17 +27,29 @@ class KnowledgeBase:
         logger.info("Ingesting document %s", source.id)
         for idx, chunk in enumerate(chunks):
             chunk_id = f"{source.id}:{idx}"
-            vector = await self._gemini.embed_text(chunk, model=self._embedding_model)
+            try:
+                vector = await self._gemini.embed_text(chunk, model=self._embedding_model)
+            except EmbeddingServiceUnavailable as exc:
+                logger.warning("Skipping chunk %s due to embedding issue: %s", chunk_id, exc)
+                continue
             metadata = source.model_dump()
             metadata.update({"chunk_index": idx})
             await self._store.upsert_document(chunk_id, chunk, vector, metadata)
 
     async def index_dialog(self, dialog_id: str, text: str, metadata: dict[str, str]) -> None:
-        vector = await self._gemini.embed_text(text, model=self._embedding_model)
+        try:
+            vector = await self._gemini.embed_text(text, model=self._embedding_model)
+        except EmbeddingServiceUnavailable as exc:
+            logger.warning("Unable to index dialog %s due to embedding issue: %s", dialog_id, exc)
+            return
         await self._store.upsert_dialog(dialog_id, text, vector, metadata)
 
     async def search(self, query: str, k: int = 5) -> KnowledgeSearchResponse:
-        vector = await self._gemini.embed_text(query, model=self._embedding_model)
+        try:
+            vector = await self._gemini.embed_text(query, model=self._embedding_model)
+        except EmbeddingServiceUnavailable as exc:
+            logger.warning("Embedding unavailable for search '%s': %s", query, exc)
+            return KnowledgeSearchResponse(hits=[], query=query)
         hits = await self._store.search(vector, k=k)
         formatted = [
             {

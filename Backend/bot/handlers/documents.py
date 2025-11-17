@@ -6,6 +6,7 @@ from aiogram import F, Router
 from aiogram.types import Message
 
 from app.config import get_settings
+from bot.utils.onboarding import ensure_onboarding_ready
 
 router = Router()
 
@@ -14,6 +15,10 @@ router = Router()
 async def handle_document(message: Message) -> None:
     document = message.document
     if not document:
+        return
+
+    allowed, _ = await ensure_onboarding_ready(message)
+    if not allowed:
         return
 
     settings = get_settings()

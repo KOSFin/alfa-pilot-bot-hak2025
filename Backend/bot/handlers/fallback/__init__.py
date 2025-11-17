@@ -6,6 +6,7 @@ from aiogram import F, Router
 from aiogram.types import Message
 
 from app.config import get_settings
+from bot.utils.onboarding import ensure_onboarding_ready
 
 router = Router()
 
@@ -14,6 +15,11 @@ router = Router()
 async def handle_text(message: Message) -> None:
     if message.text and message.text.startswith("/"):
         return
+
+    allowed, _ = await ensure_onboarding_ready(message)
+    if not allowed:
+        return
+
     settings = get_settings()
     async with httpx.AsyncClient(timeout=120.0) as client:
         payload = {

@@ -25,3 +25,18 @@ class CompanyProfileResponse(BaseModel):
 
     status: str = Field(default="ok")
     profile: CompanyProfile
+
+
+class IntegrationConfirmation(BaseModel):
+    """Payload confirming Alfa Business enablement."""
+
+    user_id: str = Field(description="Telegram user identifier")
+    provider: str = Field(default="alpha_business", description="Integration provider name")
+    connected_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class IntegrationConfirmationResponse(BaseModel):
+    """Response payload for integration confirmation."""
+
+    status: str = Field(default="ok")
+    integration: IntegrationConfirmation

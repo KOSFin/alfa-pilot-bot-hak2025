@@ -9,6 +9,7 @@ from aiogram.types import Message
 
 from app.config import get_settings
 from app.services.transcription.groq_client import GroqTranscriber
+from bot.utils.onboarding import ensure_onboarding_ready
 
 router = Router()
 
@@ -17,6 +18,10 @@ router = Router()
 async def handle_voice(message: Message) -> None:
     voice = message.voice
     if not voice:
+        return
+
+    allowed, _ = await ensure_onboarding_ready(message)
+    if not allowed:
         return
 
     settings = get_settings()

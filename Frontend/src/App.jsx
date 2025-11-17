@@ -3,6 +3,7 @@ import './App.css'
 
 import {
   executePlan,
+  confirmAlphaBusiness,
   fetchDocuments,
   fetchHealth,
   searchKnowledge,
@@ -46,6 +47,10 @@ function App() {
   const userId = usePersistentUserId()
   const telegramWebApp = window.Telegram?.WebApp
   const isTelegram = Boolean(telegramWebApp)
+  const appMode = useMemo(() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('mode') ?? 'main'
+  }, [])
   const [documents, setDocuments] = useState([])
   const [chatInput, setChatInput] = useState('')
   const [chatHistory, setChatHistory] = useState([
@@ -67,10 +72,13 @@ function App() {
       telegramWebApp.ready()
       telegramWebApp.expand()
     }
+    if (appMode !== 'main') {
+      return
+    }
     fetchHealth().then(setHealthStatus).catch(() => setHealthStatus({ status: 'error' }))
     refreshDocuments()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [telegramWebApp, appMode])
 
   async function refreshDocuments() {
     try {
@@ -109,8 +117,8 @@ function App() {
       await saveCompanyProfile(payload)
       setCompanyStatus(
         isTelegram
-          ? 'Профиль сохранён. Возвращаемся в диалог в Telegram.'
-          : 'Профиль сохранён. Можно перейти к документам и диалогу.'
+          ? 'Профиль сохранён и поставлен в индексацию. Возвращаемся в диалог в Telegram.'
+          : 'Профиль сохранён и отправлен в индексацию. Можно перейти к документам и диалогу.'
       )
 
       if (isTelegram) {
@@ -212,6 +220,16 @@ function App() {
   const knowledgeSummary = {
     totalDocuments: documents.length,
     categories: Array.from(new Set(documents.map((doc) => doc.category))).length,
+  }
+
+  if (appMode === 'integration') {
+    return (
+      <IntegrationStub
+        userId={userId}
+        telegramWebApp={telegramWebApp}
+        isTelegram={isTelegram}
+      />
+    )
   }
 
   return (
@@ -441,6 +459,54 @@ function App() {
             )}
           </div>
         </section>
+      </main>
+    </div>
+  )
+}
+
+function IntegrationStub({ userId, telegramWebApp, isTelegram }) {
+  const [status, setStatus] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (telegramWebApp) {
+      telegramWebApp.ready()
+      telegramWebApp.expand()
+    }
+  }, [telegramWebApp])
+
+  async function handleConnect() {
+    setIsSubmitting(true)
+    try {
+      await confirmAlphaBusiness({ user_id: userId })
+      setStatus('Интеграция подтверждена. Возвращаемся в бота...')
+      if (telegramWebApp) {
+        telegramWebApp.sendData(JSON.stringify({ type: 'alpha_business_connected', user_id: userId }))
+        setTimeout(() => telegramWebApp.close(), 400)
+      }
+    } catch (error) {
+      setStatus(error.message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="integration-screen">
+      <header className="integration-screen__header">
+        <h1>Alfa Pilot</h1>
+        <p>Подключение Альфа-Бизнес</p>
+      </header>
+      <main className="integration-screen__body">
+        <p>
+          Подключение нужно, чтобы ассистент видел операции и мог точнее подсказывать. Нажмите кнопку ниже, и мы
+          отметим интеграцию.
+        </p>
+        <button type="button" className="primary" onClick={handleConnect} disabled={isSubmitting}>
+          {isSubmitting ? 'Подключаем...' : 'Подключить'}
+        </button>
+        {status && <p className="helper-text">{status}</p>}
+        {!isTelegram && <p className="helper-text">Эта страница рассчитана на запуск из Telegram мини-приложения.</p>}
       </main>
     </div>
   )

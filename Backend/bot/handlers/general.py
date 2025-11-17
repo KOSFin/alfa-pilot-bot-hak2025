@@ -4,47 +4,53 @@ from __future__ import annotations
 import json
 import logging
 import re
+from datetime import datetime
 from textwrap import dedent
 
 import httpx
 from aiogram import F, Router
 from aiogram.filters import CommandStart
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, WebAppInfo
+from aiogram.types import Message
 
 from app.config import get_settings
 from app.services.storage.redis_store import RedisStore
+
+from ..utils.onboarding import (
+    OnboardingStage,
+    build_keyboard_for_stage,
+    get_onboarding_status,
+)
 
 router = Router()
 logger = logging.getLogger(__name__)
 
 
-def build_start_keyboard() -> InlineKeyboardMarkup:
-    settings = get_settings()
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="Открыть веб-приложение", web_app=WebAppInfo(url=settings.twa_url))],
-            [InlineKeyboardButton(text="Интеграция с Альфа-Бизнес", callback_data="stub_integration")],
-        ]
-    )
-
-
 @router.message(CommandStart())
 async def cmd_start(message: Message) -> None:
     logger.info("Handling /start for user %s", message.from_user.id if message.from_user else "unknown")
-    text = dedent(
-        """
-        Привет! Я Alfa Pilot — умный ассистент для финансовых расчётов и советов.
+    user_id = str(message.from_user.id) if message.from_user else "anonymous"
+    status = await get_onboarding_status(user_id)
 
-        Нажмите кнопку ниже, чтобы открыть мини-приложение и заполнить профиль компании. После сохранения профиль подтянется в бота, и вы сможете продолжить диалог прямо здесь.
+    if status.stage == OnboardingStage.PROFILE:
+        text = dedent(
+            """
+            Привет! Я Alfa Pilot и помогаю быстро считать сценарии и отвечать на бизнес-вопросы.\n\nПока я ничего не знаю о вашей компании, поэтому первым делом заполните профиль в мини-приложении. Это нужно, чтобы учесть ваш контекст, а данные сразу же отправятся в очередь на индексацию.
+            """
+        ).strip()
+    elif status.stage == OnboardingStage.INTEGRATION:
+        text = dedent(
+            """
+            Профиль компании уже у меня и стоит в очереди на индексацию. Осталось подключить Альфа-Бизнес через мини-приложение, чтобы я мог подстраиваться под реальные операции.
+            """
+        ).strip()
+    else:
+        text = dedent(
+            """
+            Отлично, все готово! Вот как мы работаем дальше:\n1. Задавайте запросы или отправляйте голосовые сообщения — я отвечу и сохраню диалог.\n2. Загружайте документы, и я буду подбирать выдержки в ответах.\n3. Если пришлю расчётный план — выполните его командой /execute_<id>.
+            """
+        ).strip()
 
-        1. Загрузите документы и материалы компании через мини-приложение.
-        2. Подключите Альфа-Бизнес (пока заглушка) для синхронизации операций.
-        3. Опишите, что нужно посчитать или спросите совет — я всё сохраню в память.
-
-        Готов помочь! 👇
-        """
-    ).strip()
-    await message.answer(text, reply_markup=build_start_keyboard())
+    await message.answer(text, reply_markup=build_keyboard_for_stage(status.stage))
 
 
 @router.message(lambda message: bool(message.text and message.text.startswith("/execute_")))
@@ -94,23 +100,44 @@ async def handle_web_app_data(message: Message) -> None:
         return
 
     store = RedisStore()
+    payload_type = payload.get("type", "company_profile")
+    user_id = str(message.from_user.id if message.from_user else payload.get("user_id", "unknown"))
+
+    if payload_type == "alpha_business_connected":
+        logger.info("Received Alfa Business integration confirmation from user %s", user_id)
+        integration_payload = {
+            "status": "connected",
+            "connected_at": datetime.utcnow().isoformat(),
+        }
+        await store.set_json(f"integration:alpha-business:{user_id}", integration_payload)
+        reply = dedent(
+            """
+            Готово — отметили подключение Альфа-Бизнес. Я завершил знакомство и готов работать. Вот что можно сделать дальше:
+            1. Задавайте вопросы или голосовые сообщения — отвечу и сохраню их в памяти.
+            2. Загружайте документы, чтобы использовать их в ответах.
+            3. Просите расчёты — если предложу план, выполните его командой /execute_<id>.
+            """
+        ).strip()
+        await message.answer(reply, reply_markup=build_keyboard_for_stage(OnboardingStage.READY))
+        return
+
     profile = {
-        "user_id": str(message.from_user.id if message.from_user else "unknown"),
+        "user_id": user_id,
         "company_name": payload.get("company_name", ""),
         "industry": payload.get("industry"),
         "employees": payload.get("employees"),
         "annual_revenue": payload.get("annual_revenue"),
         "key_systems": payload.get("key_systems"),
         "goals": payload.get("goals"),
+        "submitted_at": datetime.utcnow().isoformat(),
     }
 
     logger.info("Received company profile from web app for user %s", profile["user_id"])
 
     await store.set_json(f"company-profile:{profile['user_id']}", profile)
-
     details = _format_profile(profile)
-    reply = "Отлично, я сохранил профиль вашей компании. "
+    reply = "Профиль сохранён и отправлен в очередь на индексацию. "
     if details:
         reply += f"\n\n{details}"
-    reply += "\n\nПродолжайте знакомство — задайте вопрос или загрузите документы."
-    await message.answer(reply)
+    reply += "\n\nСледующий шаг — подключить Альфа-Бизнес через мини-приложение."
+    await message.answer(reply, reply_markup=build_keyboard_for_stage(OnboardingStage.INTEGRATION))
