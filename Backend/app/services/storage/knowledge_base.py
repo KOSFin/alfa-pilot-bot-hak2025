@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class KnowledgeBase:
     """Facade for embedding content and storing it in OpenSearch."""
 
-    def __init__(self, embedding_model: str = "text-embedding-004") -> None:
+    def __init__(self, embedding_model: str = "text-embedding-3-small") -> None:
         self._gemini = GeminiClient()
         self._store = OpenSearchVectorStore()
         self._embedding_model = embedding_model
