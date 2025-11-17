@@ -24,15 +24,15 @@
 
 ```mermaid
 flowchart LR
-		U((Пользователь)) -->|/start, voice, docs| TG[Telegram Bot (aiogram)]
-		TG -->|Webhook/Long polling| API[FastAPI Backend]
-		API -->|Voice| Groq[Groq Whisper Large v3]
-		API -->|Reasoning| Gemini[Gemini 2.5 Flash]
-		API -->|Vectors| OS[(OpenSearch)]
-		API -->|Session, plans| Redis[(Redis)]
-		API -->|Mini-app API| FE[React + Vite WebApp]
-		API -->|Tools| Calc[Calculator Engine + Python executor]
-		Calc --> API
+    U((Пользователь)) -->|/start · voice · docs| TG[Telegram Bot (aiogram)]
+    TG -->|Webhook или polling| API[FastAPI Backend]
+    API -->|Voice| Groq[Groq Whisper Large v3]
+    API -->|Reasoning| Gemini[Gemini 2.5 Flash]
+    API -->|Vectors| OS[(OpenSearch)]
+    API -->|Session, plans| Redis[(Redis)]
+    API -->|Mini-app API| FE[React + Vite WebApp]
+    API -->|Tools| Calc[Calculator Engine + Python executor]
+    Calc --> API
 ```
 
 **User agents (по порядку):**
@@ -45,22 +45,22 @@ flowchart LR
 ## User story (первый вход)
 ```mermaid
 sequenceDiagram
-		participant User
-		participant Bot as @aalfa_bot
-		participant WebApp as alpha-hak-copilot.ruka.me
-		participant API as FastAPI
-		participant OS as OpenSearch
-		participant Redis
-		User->>Bot: /start
-		Bot-->>User: Просьба описать компанию + кнопка web-app
-		User->>WebApp: Загружает документы/описание
-		WebApp->>API: `POST /api/knowledge/documents`
-		API->>OS: Индексация + эмбеддинги Gemini
-		API->>Redis: Сохранение статуса и профиля
-		API-->>Bot: уведомление об успешной загрузке
-		User->>WebApp: Нажимает "Подключить Альфа-Бизнес" (заглушка)
-		WebApp->>API: `POST /api/integration/alpha-business`
-		API-->>Bot: Онбординг завершён, открываем основной функционал
+    participant User
+    participant Bot as @aalfa_bot
+    participant WebApp as alpha-hak-copilot.ruka.me
+    participant API as FastAPI
+    participant OS as OpenSearch
+    participant Redis
+    User->>Bot: /start
+    Bot-->>User: Просьба описать компанию + кнопка web-app
+    User->>WebApp: Загружает документы или описание
+    WebApp->>API: POST /api/knowledge/documents
+    API->>OS: Индексация + эмбеддинги Gemini
+    API->>Redis: Сохранение статуса и профиля
+    API-->>Bot: уведомление об успешной загрузке
+    User->>WebApp: Нажимает "Подключить Альфа-Бизнес" (заглушка)
+    WebApp->>API: POST /api/integration/alpha-business
+    API-->>Bot: Онбординг завершён, открываем основной функционал
 ```
 
 ## User story (рабочий режим)
@@ -179,5 +179,3 @@ npm run dev
 - Добавить новые калькуляторные инструменты (SQL, python notebooks, внешние API).
 - Расширить web-app: визуализация загрузок, графики рисков, управление папками.
 - Настроить backup OpenSearch + аналитические дешборды (Grafana/Redash).
-
-Система уже запущена на сервере (`api-alpha-hak-copilot.ruka.me` + `alpha-hak-copilot.ruka.me`). Этот README — основной источник правды: описывает идею, стек, поведение агентов и даёт ссылки на Swagger. Если нужно расширить функциональность, стартуйте с отдельных микросервисов (OpenSearch/Redis) и обновляйте spec в `Backend/docs/openapi.yaml`.

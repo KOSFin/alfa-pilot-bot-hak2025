@@ -112,7 +112,20 @@ async def lifespan(app: FastAPI):
 
 
 settings = get_settings()
-app = FastAPI(title=settings.project_name, lifespan=lifespan)
+
+def with_prefix(path: str) -> str:
+    prefix = settings.api_prefix.rstrip("/")
+    if not prefix:
+        return path
+    return f"{prefix}{path}"
+
+app = FastAPI(
+    title=settings.project_name,
+    lifespan=lifespan,
+    docs_url=with_prefix("/docs"),
+    redoc_url=with_prefix("/redoc"),
+    openapi_url=with_prefix("/openapi.json"),
+)
 
 app.add_middleware(
     CORSMiddleware,
