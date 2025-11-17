@@ -24,7 +24,7 @@
 
 ```mermaid
 flowchart LR
-    U((Пользователь)) -->|/start · voice · docs| TG[Telegram Bot (aiogram)]
+    U((Пользователь)) -->|/start, voice, docs| TG[Telegram Bot aiogram]
     TG -->|Webhook или polling| API[FastAPI Backend]
     API -->|Voice| Groq[Groq Whisper Large v3]
     API -->|Reasoning| Gemini[Gemini 2.5 Flash]
