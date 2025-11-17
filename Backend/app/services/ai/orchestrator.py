@@ -34,7 +34,16 @@ class AIOrchestrator:
                     "type": "array",
                     "items": {"type": "string"},
                 },
-                "metadata": {"type": "object"},
+                "metadata": {
+                    "type": "object",
+                    "properties": {
+                        "notes": {"type": "string"},
+                        "tags": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                        },
+                    },
+                },
             },
             "required": ["mode"],
             "additionalProperties": False,

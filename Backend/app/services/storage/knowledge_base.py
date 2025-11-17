@@ -58,7 +58,7 @@ class KnowledgeBase:
             vector = await self._gemini.embed_text(query, model=self._embedding_model)
         except EmbeddingServiceUnavailable as exc:
             logger.warning("Embedding unavailable for search '%s': %s", query, exc)
-            return KnowledgeSearchResponse(hits=[], query=query)
+            return KnowledgeSearchResponse(hits=[], query=query, embedding_available=False)
         hits = await self._store.search(vector, k=k)
         formatted = [
             {
@@ -69,7 +69,7 @@ class KnowledgeBase:
             }
             for hit in hits
         ]
-        return KnowledgeSearchResponse(hits=formatted, query=query)
+        return KnowledgeSearchResponse(hits=formatted, query=query, embedding_available=True)
 
     @staticmethod
     def compute_checksum(content: bytes) -> str:

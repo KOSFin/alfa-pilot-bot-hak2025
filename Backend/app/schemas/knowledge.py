@@ -48,3 +48,4 @@ class KnowledgeSearchResponse(BaseSchema):
 
     hits: list[KnowledgeSearchHit]
     query: str
+    embedding_available: bool = True
