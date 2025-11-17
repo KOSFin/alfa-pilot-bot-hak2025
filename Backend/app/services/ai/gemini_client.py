@@ -72,17 +72,39 @@ class GeminiClient:
             logger.exception("Unexpected error generating structured content")
             raise
 
-    async def embed_text(self, text: str, *, model: str = "text-embedding-3-small") -> list[float]:
-        logger.debug("Embedding text via model=%s", model)
+    async def embed_text(self, text: str, *, model: str = "simple-tfidf") -> list[float]:
+        """Simple text vectorization without external API calls."""
+        logger.debug("Embedding text via simple vectorization")
         try:
-            response = await self._client.embeddings.create(
-                model=model,
-                input=text
-            )
-            return response.data[0].embedding
-        except OpenAIError as exc:
-            logger.warning("Embedding API rejected request: %s", exc)
-            raise EmbeddingServiceUnavailable("Embedding service unavailable") from exc
+            # Simple bag-of-words vectorization
+            import re
+            from collections import Counter
+            import math
+            
+            # Tokenize and clean
+            words = re.findall(r'\w+', text.lower())
+            if not words:
+                return [0.0] * 384  # Return zero vector
+            
+            # Create a simple hash-based vector (384 dimensions)
+            vector = [0.0] * 384
+            word_freq = Counter(words)
+            
+            # Distribute word frequencies across vector dimensions
+            for word, freq in word_freq.items():
+                # Use word hash to determine vector positions
+                word_hash = hash(word)
+                for i in range(3):  # Each word affects 3 dimensions
+                    idx = (word_hash + i) % 384
+                    # TF-IDF approximation: log(1 + freq)
+                    vector[idx] += math.log(1 + freq)
+            
+            # Normalize vector
+            magnitude = math.sqrt(sum(x * x for x in vector))
+            if magnitude > 0:
+                vector = [x / magnitude for x in vector]
+            
+            return vector
         except Exception as exc:
             logger.exception("Unexpected embedding failure")
             raise EmbeddingServiceUnavailable("Embedding service error") from exc
