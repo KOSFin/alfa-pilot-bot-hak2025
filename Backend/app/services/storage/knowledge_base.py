@@ -15,10 +15,12 @@ logger = logging.getLogger(__name__)
 class KnowledgeBase:
     """Facade for embedding content and storing it in OpenSearch."""
 
-    def __init__(self, embedding_model: str = "simple-tfidf") -> None:
+    def __init__(self, embedding_model: str = None) -> None:
+        from ...config import get_settings
+        settings = get_settings()
         self._gemini = GeminiClient()
         self._store = OpenSearchVectorStore()
-        self._embedding_model = embedding_model
+        self._embedding_model = embedding_model or settings.embedding_model
 
     async def initialize(self) -> None:
         await self._store.ensure_indices()

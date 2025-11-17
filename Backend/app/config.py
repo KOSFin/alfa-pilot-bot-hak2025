@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     project_name: str = Field(default="Alfa Pilot Smart Calculator")
     environment: Literal["local", "dev", "prod"] = Field(default="local")
     api_prefix: str = Field(default="/api")
-    api_base_url: str = Field(default="http://localhost:8000/api", alias="LLM_API_BASE_URL")
+    api_base_url: str = Field(default="http://localhost:8000/api")
     webhook_base_url: Optional[str] = Field(default=None, alias="WEBHOOK_BASE_URL")
     webhook_secret_token: Optional[str] = Field(default=None, alias="WEBHOOK_SECRET_TOKEN")
 
@@ -28,6 +28,9 @@ class Settings(BaseSettings):
 
     # AI & ML
     gemini_api_key: str = Field(alias="API_KEY_AI_MODEL")
+    llm_api_base_url: str = Field(default="https://ai.megallm.io/v1", alias="AI_LLM_API_BASE_URL")
+    llm_model_name: str = Field(default="gemini-2.5-flash", alias="LLM_MODEL_NAME")
+    embedding_model: str = Field(default="simple-tfidf", alias="EMBEDDING_MODEL")
     groq_api_key: str = Field(alias="API_KEY_SPEECH2TEXT")
     groq_api_url: str = Field(alias="API_URL_SPEECH2TEXT")
 
@@ -47,7 +50,7 @@ class Settings(BaseSettings):
     calculator_timeout_sec: int = Field(default=10)
 
     # Feature flags
- able_voice_processing: bool = Field(default=True)
+    enable_tool_audit: bool = Field(default=True)
 
     def ensure_directories(self) -> None:
         """Ensure that runtime directories exist."""
