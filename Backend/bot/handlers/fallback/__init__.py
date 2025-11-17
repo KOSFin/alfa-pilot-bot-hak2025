@@ -81,6 +81,12 @@ async def handle_text(message: Message) -> None:
 
     # Format the reply text to ensure proper Telegram formatting
     formatted_reply = format_bot_message(reply_text)
+    
+    # Add tools used if available
+    tools_used = plan_info.get("tools_used", [])
+    if tools_used:
+        tools_str = " ".join([f"{tool.get('icon', '🔧')} {tool.get('name', 'Tool')}" for tool in tools_used])
+        formatted_reply += f"\n\n<i>🛠 Использованные инструменты: {tools_str}</i>"
 
     # Edit the thinking message with the actual response
     try:

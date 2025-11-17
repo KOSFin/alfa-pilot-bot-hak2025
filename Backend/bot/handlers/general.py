@@ -32,6 +32,28 @@ async def cmd_start(message: Message) -> None:
     logger.info("Handling /start for user %s", message.from_user.id if message.from_user else "unknown")
     user_id = str(message.from_user.id) if message.from_user else "anonymous"
     keyboard_user_id = str(message.from_user.id) if message.from_user else None
+    
+    # Check for deep link parameters (e.g., /start calc_data)
+    start_args = message.text.split(maxsplit=1)
+    if len(start_args) > 1:
+        args = start_args[1]
+        
+        # Handle calculator deep link
+        if args.startswith('{'):
+            try:
+                calc_data = json.loads(args)
+                if calc_data.get("question"):
+                    # User shared a calculation - show info and prompt them to continue in web app
+                    await message.answer(
+                        f"📊 <b>Расчёт из мини-приложения</b>\n\n"
+                        f"Вопрос: {calc_data['question']}\n\n"
+                        f"Откройте мини-приложение для выполнения расчёта.",
+                        reply_markup=build_keyboard_for_stage(OnboardingStage.COMPLETE, keyboard_user_id)
+                    )
+                    return
+            except json.JSONDecodeError:
+                logger.warning(f"Failed to parse deep link data: {args}")
+    
     status = await get_onboarding_status(user_id)
 
     if status.stage == OnboardingStage.PROFILE:
@@ -104,8 +126,16 @@ async def handle_commands(message: Message) -> None:
 
     data = response.json()
     reply_text = data.get("reply", {}).get("content", "")
+    reply_metadata = data.get("reply", {}).get("metadata", {})
+    
     # Format the reply text to ensure proper Telegram formatting
     formatted_reply = format_bot_message(reply_text)
+    
+    # Add tools used if available
+    tools_used = reply_metadata.get("tools_used", [])
+    if tools_used:
+        tools_str = " ".join([f"{tool.get('icon', '🔧')} {tool.get('name', 'Tool')}" for tool in tools_used])
+        formatted_reply += f"\n\n<i>🛠 Использованные инструменты: {tools_str}</i>"
 
     # Edit the thinking message with the actual response
     try:

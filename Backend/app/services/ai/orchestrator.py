@@ -171,7 +171,11 @@ class AIOrchestrator:
             "followups": response.get("followups", []),
         }
 
-    async def draft_calculator_reply(self, confirmation_payload: dict[str, Any], tool_results: list[dict[str, Any]]) -> str:
+    async def draft_calculator_reply(self, confirmation_payload: dict[str, Any], tool_results: list[dict[str, Any]]) -> tuple[str, list[dict[str, str]]]:
+        """
+        Generate calculator reply and return used tools info.
+        Returns: (reply_text, tools_used)
+        """
         prompt = dedent(
             f"""
             You are Alfa Pilot AI. Summarize the calculation for the user using the plan and tool execution results.
@@ -183,4 +187,48 @@ class AIOrchestrator:
             """
         ).strip()
         response = await self._gemini.generate_content(prompt)
-        return response
+        
+        # Extract tools used from payload and results
+        tools_used = []
+        
+        # Add suggested tool from plan
+        if confirmation_payload.get("suggested_tool"):
+            tool_name = confirmation_payload["suggested_tool"]
+            tools_used.append({
+                "name": self._get_tool_display_name(tool_name),
+                "icon": self._get_tool_icon(tool_name)
+            })
+        
+        # Add tools from results
+        for result in tool_results:
+            if result.get("tool"):
+                tool_name = result["tool"]
+                if not any(t["name"] == self._get_tool_display_name(tool_name) for t in tools_used):
+                    tools_used.append({
+                        "name": self._get_tool_display_name(tool_name),
+                        "icon": self._get_tool_icon(tool_name)
+                    })
+        
+        return response, tools_used
+    
+    def _get_tool_display_name(self, tool_name: str) -> str:
+        """Convert internal tool name to display name."""
+        tool_map = {
+            "python_code_executor": "Калькулятор Python",
+            "knowledge_search": "Поиск в базе знаний",
+            "formula_calculator": "Вычисление формул",
+            "data_analyzer": "Анализ данных",
+            "finance_calculator": "Финансовый калькулятор"
+        }
+        return tool_map.get(tool_name, tool_name.replace("_", " ").title())
+    
+    def _get_tool_icon(self, tool_name: str) -> str:
+        """Get icon for tool."""
+        icon_map = {
+            "python_code_executor": "🐍",
+            "knowledge_search": "🔍",
+            "formula_calculator": "🧮",
+            "data_analyzer": "📊",
+            "finance_calculator": "💰"
+        }
+        return icon_map.get(tool_name, "🔧")

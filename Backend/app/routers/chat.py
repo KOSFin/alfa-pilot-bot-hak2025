@@ -194,8 +194,14 @@ async def execute_plan(
     result: ToolExecutionResult = calculator.run(tool_request_payload)
     tool_results = [result]
 
-    reply_text = await orchestrator.draft_calculator_reply(plan_payload, [result.model_dump()])
-    reply = ChatMessage(role=MessageRole.ASSISTANT, content=reply_text)
+    reply_text, tools_used = await orchestrator.draft_calculator_reply(plan_payload, [result.model_dump()])
+    
+    # Add tools_used to reply metadata
+    reply = ChatMessage(
+        role=MessageRole.ASSISTANT, 
+        content=reply_text,
+        metadata={"tools_used": tools_used}
+    )
 
     await conversation.append_messages(payload.user_id, [reply])
     await knowledge_base.index_dialog(
