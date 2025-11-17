@@ -133,7 +133,7 @@ async def _notify_bot_integration_connected(request: Request, user_id: str) -> N
 
 
 async def _index_profile_background(profile: CompanyProfile, knowledge_base: KnowledgeBase) -> None:
-    """Convert profile to text and index it asynchronously."""
+    """Convert profile to text and index it asynchronously with comprehensive representations."""
 
     store = RedisStore()
     status_key = f"profile-index-status:{profile.user_id}"
@@ -142,57 +142,121 @@ async def _index_profile_background(profile: CompanyProfile, knowledge_base: Kno
         {"status": "processing", "started_at": datetime.utcnow().isoformat()},
     )
 
-    # Create multiple representations of the profile to improve recall
-    fields = {
-        "Название": profile.company_name,
-        "Индустрия": profile.industry,
-        "Сотрудников": profile.employees,
-        "Выручка": profile.annual_revenue,
-        "Системы": profile.key_systems,
-        "Цели": profile.goals,
-    }
-    
-    # Primary summary
-    lines = [f"{label}: {value}" for label, value in fields.items() if value]
-    summary = "Профиль компании\n" + "\n".join(lines)
-
-    # Additional texts to improve vector search recall
-    additional_texts = []
-    
-    # Add company name variations for better matching
-    if profile.company_name:
-        # Add company name with variations for better matching
-        additional_texts.extend([
-            f"Компания: {profile.company_name}",
-            f"Название моей компании: {profile.company_name}",
-            f"Моя компания называется: {profile.company_name}",
-            f"Организация: {profile.company_name}",
-            f"Моя организация: {profile.company_name}",
-            f"Фирма: {profile.company_name}",
-            f"Компания {profile.company_name} работает в сфере {profile.industry or 'неизвестной индустрии'}"
-        ])
-        
-        # Include company name in context for various types of queries
-        if profile.industry:
-            additional_texts.append(f"Компания {profile.company_name} работает в индустрии {profile.industry}")
-        if profile.annual_revenue:
-            additional_texts.append(f"Компания {profile.company_name} имеет выручку {profile.annual_revenue}")
-        if profile.employees:
-            additional_texts.append(f"Компания {profile.company_name} насчитывает {profile.employees} сотрудников")
-
-    dialog_id = f"profile:{profile.user_id}:{uuid.uuid4()}"
-    metadata = {"user_id": profile.user_id, "source": "company_profile"}
-
     try:
-        # Index primary summary
-        indexed = await knowledge_base.index_dialog(dialog_id, summary, metadata)
+        # Primary structured summary
+        fields = {
+            "Название": profile.company_name,
+            "Индустрия": profile.industry,
+            "Сотрудников": profile.employees,
+            "Выручка": profile.annual_revenue,
+            "Системы": profile.key_systems,
+            "Цели": profile.goals,
+        }
         
-        # Index additional representations with the same metadata
-        for i, additional_text in enumerate(additional_texts):
-            additional_dialog_id = f"profile:{profile.user_id}:{uuid.uuid4()}:{i}"
-            await knowledge_base.index_dialog(additional_dialog_id, additional_text, metadata)
+        lines = [f"{label}: {value}" for label, value in fields.items() if value]
+        primary_summary = "Профиль компании\n" + "\n".join(lines)
+
+        # Comprehensive list of representations to maximize search recall
+        additional_texts = []
         
-    except Exception as exc:  # pragma: no cover - defensive logging
+        if profile.company_name:
+            # Variations for company name queries
+            name_variations = [
+                f"Компания: {profile.company_name}",
+                f"Название моей компании: {profile.company_name}",
+                f"Моя компания называется: {profile.company_name}",
+                f"Организация: {profile.company_name}",
+                f"Моя организация: {profile.company_name}",
+                f"Фирма: {profile.company_name}",
+                f"Компания {profile.company_name} работает в сфере {profile.industry or 'неизвестной индустрии'}"
+            ]
+            
+            # Variations for direct questions about company name
+            question_variations = [
+                f"Как называется моя компания? Моя компания называется {profile.company_name}",
+                f"Название вашей компании: {profile.company_name}",
+                f"Моя компания - {profile.company_name}",
+                f"Наименование организации: {profile.company_name}",
+                f"Компания, с которой мы работаем: {profile.company_name}",
+                f"Название нашей компании: {profile.company_name}",
+                f"Компания {profile.company_name}",
+                f"Мы работаем с компанией {profile.company_name}",
+                f"{profile.company_name} - это название моей компании",
+                f"Наша организация: {profile.company_name}"
+            ]
+            
+            additional_texts.extend(name_variations)
+            additional_texts.extend(question_variations)
+            
+            # Contextual information combining company name with other details
+            contextual_variations = []
+            if profile.industry:
+                contextual_variations.extend([
+                    f"Компания {profile.company_name} работает в индустрии {profile.industry}",
+                    f"Моя компания {profile.company_name} специализируется на {profile.industry}",
+                    f"{profile.company_name} - {profile.industry} компания"
+                ])
+            if profile.annual_revenue:
+                contextual_variations.extend([
+                    f"Компания {profile.company_name} имеет выручку {profile.annual_revenue}",
+                    f"Выручка {profile.company_name} составляет {profile.annual_revenue}"
+                ])
+            if profile.employees:
+                contextual_variations.extend([
+                    f"Компания {profile.company_name} насчитывает {profile.employees} сотрудников",
+                    f"В {profile.company_name} работает {profile.employees} человек"
+                ])
+            if profile.goals:
+                contextual_variations.extend([
+                    f"Цели компании {profile.company_name}: {profile.goals}",
+                    f"{profile.company_name} стремится к: {profile.goals}"
+                ])
+            
+            additional_texts.extend(contextual_variations)
+
+        # Prepare all documents to index
+        all_documents = [(primary_summary, "primary")]
+        all_documents.extend([(text, "variation") for text in additional_texts if text.strip()])
+
+        # Index all representations
+        metadata = {"user_id": profile.user_id, "source": "company_profile", "profile_type": "company_info"}
+        
+        indexed_any = False
+        for idx, (text, doc_type) in enumerate(all_documents):
+            if text.strip():  # Only index non-empty texts
+                dialog_id = f"profile:{profile.user_id}:{uuid.uuid4()}:{idx}"
+                try:
+                    indexed = await knowledge_base.index_dialog(dialog_id, text, metadata)
+                    if indexed:
+                        indexed_any = True
+                except Exception as e:
+                    logger.warning(f"Failed to index company profile document {dialog_id} for user {profile.user_id}: {e}")
+                    # Continue with other documents even if one fails
+
+        if not indexed_any:
+            logger.warning("No company profile documents were indexed for user %s", profile.user_id)
+            await store.set_json(
+                status_key,
+                {
+                    "status": "failed",
+                    "reason": "embedding_unavailable",
+                    "finished_at": datetime.utcnow().isoformat(),
+                },
+            )
+            return
+
+        await store.set_json(
+            status_key,
+            {
+                "status": "indexed",
+                "finished_at": datetime.utcnow().isoformat(),
+                "indexed_count": len(all_documents),
+            },
+        )
+        
+        logger.info(f"Successfully indexed company profile for user {profile.user_id} with {len(all_documents)} documents")
+
+    except Exception as exc:
         logger.exception("Failed to index company profile for user %s", profile.user_id)
         await store.set_json(
             status_key,
@@ -202,26 +266,6 @@ async def _index_profile_background(profile: CompanyProfile, knowledge_base: Kno
                 "finished_at": datetime.utcnow().isoformat(),
             },
         )
-        return
-
-    if not indexed:
-        await store.set_json(
-            status_key,
-            {
-                "status": "failed",
-                "reason": "embedding_unavailable",
-                "finished_at": datetime.utcnow().isoformat(),
-            },
-        )
-        return
-
-    await store.set_json(
-        status_key,
-        {
-            "status": "indexed",
-            "finished_at": datetime.utcnow().isoformat(),
-        },
-    )
 
 
 @router.post("/profile", response_model=CompanyProfileResponse)

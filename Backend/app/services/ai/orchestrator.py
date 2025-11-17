@@ -54,18 +54,32 @@ class AIOrchestrator:
         return OrchestrationDecision(**response)
 
     def _build_prompt(self, message: ChatMessage, history: list[ChatMessage], knowledge: KnowledgeSearchResponse) -> str:
+        # Separate company information from other knowledge
+        company_info = None
+        other_knowledge = []
+        
+        for hit in knowledge.hits:
+            if hit.metadata and hit.metadata.get("source") == "company_profile":
+                company_info = hit.text
+            else:
+                other_knowledge.append(hit)
+        
         history_text = "\n".join(
             f"{item.role}: {item.content}" for item in history[-8:]
         )
+        
+        company_context = f"Company information:\n{company_info}\n\n" if company_info else ""
+        
         kb_snippets = "\n".join(
-            f"Score {hit.score:.2f} | {hit.text[:512]}" for hit in knowledge.hits
+            f"Score {hit.score:.2f} | {hit.text[:512]}" for hit in other_knowledge
         )
+        
         prompt = dedent(
             f"""
             You are Alfa Pilot, an AI that assists SMEs with finance tasks and planning.
             Analyze the user message and decide whether it requests advisory response or a calculator-based computation.
 
-            Conversation history:
+            {company_context}Conversation history:
             {history_text}
 
             Knowledge base context:
@@ -80,20 +94,40 @@ class AIOrchestrator:
         return prompt
 
     async def draft_advisor_reply(self, message: ChatMessage, history: list[ChatMessage], knowledge: KnowledgeSearchResponse) -> str:
+        # Extract company-specific information from knowledge hits
+        company_info = None
+        other_knowledge = []
+        
+        for hit in knowledge.hits:
+            if hit.metadata and hit.metadata.get("source") == "company_profile":
+                company_info = hit.text
+            else:
+                other_knowledge.append(hit)
+        
+        # Build context with company info separated for better attention
+        company_context = f"Информация о компании пользователя:\n{company_info}\n\n" if company_info else ""
+        
+        knowledge_context = (
+            '\n'.join(f'- {hit.text[:512]}' for hit in other_knowledge) 
+            if other_knowledge 
+            else 'No extra context.'
+        )
+        
         prompt = dedent(
             f"""
-            You are Alfa Pilot AI advisor. Use the knowledge base extracts and conversation history to craft a concise, actionable reply.
+            You are Alfa Pilot AI advisor. Use the conversation history, company information, and knowledge base extracts to craft a concise, actionable reply.
 
-            Conversation history (last turns):
+            {company_context}Conversation history (last turns):
             {'\n'.join(f'{item.role}: {item.content}' for item in history[-6:])}
 
             Knowledge base context:
-            {'\n'.join(f'- {hit.text[:512]}' for hit in knowledge.hits) or 'No extra context.'}
+            {knowledge_context}
 
             User message:
             {message.content}
 
-            Provide a professional, helpful answer in Russian. Include bullet points where it improves clarity.
+            Provide a professional, helpful answer in Russian. Include bullet points where it improves clarity. 
+            If the user asks about the company name or details, prioritize the company information provided at the beginning of this prompt.
             """
         ).strip()
         response = await self._gemini.generate_content(prompt)

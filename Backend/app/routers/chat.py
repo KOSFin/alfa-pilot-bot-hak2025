@@ -43,6 +43,28 @@ def get_store() -> RedisStore:
     return RedisStore()
 
 
+async def _get_company_profile_info(user_id: str, store: RedisStore) -> str | None:
+    """Get company profile information for the user to enhance context."""
+    try:
+        profile_data = await store.get_json(f"company-profile:{user_id}")
+        if profile_data and profile_data.get("company_name"):
+            # Create a contextual string with company info
+            company_info_parts = [f"Название компании: {profile_data.get('company_name')}"]
+            if profile_data.get("industry"):
+                company_info_parts.append(f"Индустрия: {profile_data.get('industry')}")
+            if profile_data.get("employees"):
+                company_info_parts.append(f"Количество сотрудников: {profile_data.get('employees')}")
+            if profile_data.get("annual_revenue"):
+                company_info_parts.append(f"Выручка: {profile_data.get('annual_revenue')}")
+            if profile_data.get("goals"):
+                company_info_parts.append(f"Цели: {profile_data.get('goals')}")
+            
+            return "\n".join(company_info_parts)
+    except Exception as e:
+        logger.warning(f"Could not retrieve company profile for user {user_id}: {e}")
+    return None
+
+
 @router.post("/messages", response_model=ChatResponse)
 async def post_message(
     payload: ChatRequest,
@@ -54,7 +76,31 @@ async def post_message(
     user_message = ChatMessage(role=MessageRole.USER, content=payload.content, metadata=payload.metadata)
     await conversation.append_messages(payload.user_id, [user_message])
     history = await conversation.get_recent_messages(payload.user_id)
+    
+    # Get company profile info to potentially enrich the search
+    company_info = await _get_company_profile_info(payload.user_id, store)
+    
     knowledge = await knowledge_base.search(payload.content)
+    
+    # If we have company info and the query seems to be related to the company,
+    # we might want to add company info to the knowledge hits
+    if company_info:
+        # Check if query contains company-related keywords
+        company_related_keywords = ["компания", "называется", "название", "организация", "фирма", "наша", "моей", "моя", "мы"]
+        is_company_query = any(keyword in payload.content.lower() for keyword in company_related_keywords)
+        
+        if is_company_query:
+            # Add company info as a high-priority hit for company-related queries
+            from ..schemas.knowledge import KnowledgeSearchHit
+            company_hit = KnowledgeSearchHit(
+                id="company_profile",
+                score=10.0,  # High score to prioritize company info
+                text=company_info,
+                metadata={"source": "company_profile", "type": "company_info"}
+            )
+            # Insert at the beginning to give priority
+            knowledge.hits.insert(0, company_hit)
+
     decision = await orchestrator.decide(user_message, history, knowledge)
 
     if decision.mode == "advisor":
