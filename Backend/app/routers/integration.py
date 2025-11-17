@@ -1,4 +1,3 @@
-"""Integration endpoints for Telegram Web App onboarding."""
 from __future__ import annotations
 
 import logging
@@ -34,7 +33,6 @@ def get_knowledge_base(request: Request) -> KnowledgeBase:
 
 
 async def _notify_bot_profile_saved(request: Request, user_id: str) -> None:
-    """Send a message to the bot after profile is saved."""
     try:
         from aiogram import Bot
         from textwrap import dedent
@@ -79,7 +77,6 @@ async def _notify_bot_profile_saved(request: Request, user_id: str) -> None:
 
 
 async def _notify_bot_integration_connected(request: Request, user_id: str) -> None:
-    """Send a message to the bot after integration is connected."""
     try:
         from aiogram import Bot
         from textwrap import dedent
@@ -133,8 +130,6 @@ async def _notify_bot_integration_connected(request: Request, user_id: str) -> N
 
 
 async def _index_profile_background(profile: CompanyProfile, knowledge_base: KnowledgeBase) -> None:
-    """Convert profile to text and index it asynchronously with comprehensive representations."""
-
     store = RedisStore()
     status_key = f"profile-index-status:{profile.user_id}"
     await store.set_json(
@@ -143,7 +138,6 @@ async def _index_profile_background(profile: CompanyProfile, knowledge_base: Kno
     )
 
     try:
-        # Primary structured summary
         fields = {
             "Название": profile.company_name,
             "Индустрия": profile.industry,
@@ -156,11 +150,9 @@ async def _index_profile_background(profile: CompanyProfile, knowledge_base: Kno
         lines = [f"{label}: {value}" for label, value in fields.items() if value]
         primary_summary = "Профиль компании\n" + "\n".join(lines)
 
-        # Comprehensive list of representations to maximize search recall
         additional_texts = []
         
         if profile.company_name:
-            # Variations for company name queries
             name_variations = [
                 f"Компания: {profile.company_name}",
                 f"Название моей компании: {profile.company_name}",
@@ -171,7 +163,6 @@ async def _index_profile_background(profile: CompanyProfile, knowledge_base: Kno
                 f"Компания {profile.company_name} работает в сфере {profile.industry or 'неизвестной индустрии'}"
             ]
             
-            # Variations for direct questions about company name
             question_variations = [
                 f"Как называется моя компания? Моя компания называется {profile.company_name}",
                 f"Название вашей компании: {profile.company_name}",
@@ -188,7 +179,6 @@ async def _index_profile_background(profile: CompanyProfile, knowledge_base: Kno
             additional_texts.extend(name_variations)
             additional_texts.extend(question_variations)
             
-            # Contextual information combining company name with other details
             contextual_variations = []
             if profile.industry:
                 contextual_variations.extend([
@@ -214,16 +204,14 @@ async def _index_profile_background(profile: CompanyProfile, knowledge_base: Kno
             
             additional_texts.extend(contextual_variations)
 
-        # Prepare all documents to index
         all_documents = [(primary_summary, "primary")]
         all_documents.extend([(text, "variation") for text in additional_texts if text.strip()])
 
-        # Index all representations
         metadata = {"user_id": profile.user_id, "source": "company_profile", "profile_type": "company_info"}
         
         indexed_any = False
         for idx, (text, doc_type) in enumerate(all_documents):
-            if text.strip():  # Only index non-empty texts
+            if text.strip():
                 dialog_id = f"profile:{profile.user_id}:{uuid.uuid4()}:{idx}"
                 try:
                     indexed = await knowledge_base.index_dialog(dialog_id, text, metadata)
@@ -231,7 +219,6 @@ async def _index_profile_background(profile: CompanyProfile, knowledge_base: Kno
                         indexed_any = True
                 except Exception as e:
                     logger.warning(f"Failed to index company profile document {dialog_id} for user {profile.user_id}: {e}")
-                    # Continue with other documents even if one fails
 
         if not indexed_any:
             logger.warning("No company profile documents were indexed for user %s", profile.user_id)

@@ -1,4 +1,3 @@
-"""Chat orchestration endpoints."""
 from __future__ import annotations
 
 import logging
@@ -51,7 +50,6 @@ async def _get_company_profile_info(user_id: str, store: RedisStore) -> str | No
     try:
         profile_data = await store.get_json(f"company-profile:{user_id}")
         if profile_data and profile_data.get("company_name"):
-            # Create a contextual string with company info
             company_info_parts = [f"Название компании: {profile_data.get('company_name')}"]
             if profile_data.get("industry"):
                 company_info_parts.append(f"Индустрия: {profile_data.get('industry')}")
@@ -80,28 +78,22 @@ async def post_message(
     await conversation.append_messages(payload.user_id, [user_message])
     history = await conversation.get_recent_messages(payload.user_id)
     
-    # Get company profile info to potentially enrich the search
     company_info = await _get_company_profile_info(payload.user_id, store)
     
     knowledge = await knowledge_base.search(payload.content, user_id=payload.user_id)
     
-    # If we have company info and the query seems to be related to the company,
-    # we might want to add company info to the knowledge hits
     if company_info:
-        # Check if query contains company-related keywords
         company_related_keywords = ["компания", "называется", "название", "организация", "фирма", "наша", "моей", "моя", "мы"]
         is_company_query = any(keyword in payload.content.lower() for keyword in company_related_keywords)
         
         if is_company_query:
-            # Add company info as a high-priority hit for company-related queries
             from ..schemas.knowledge import KnowledgeSearchHit
             company_hit = KnowledgeSearchHit(
                 id="company_profile",
-                score=10.0,  # High score to prioritize company info
+                score=10.0,
                 text=company_info,
                 metadata={"source": "company_profile", "type": "company_info"}
             )
-            # Insert at the beginning to give priority
             knowledge.hits.insert(0, company_hit)
 
     decision = await orchestrator.decide(user_message, history, knowledge)
@@ -196,7 +188,6 @@ async def execute_plan(
 
     reply_text, tools_used = await orchestrator.draft_calculator_reply(plan_payload, [result.model_dump()])
     
-    # Add tools_used to reply metadata
     reply = ChatMessage(
         role=MessageRole.ASSISTANT, 
         content=reply_text,
@@ -228,11 +219,9 @@ async def reset_context(
 ) -> dict[str, str]:
     """Reset conversation context for the specified user."""
     try:
-        # Clear conversation history for the user
         key = f"dialog:{user_id}"
         await store.delete(key)
 
-        # Return success response
         return {"status": "success", "message": f"Context for user {user_id} has been reset"}
     except Exception as e:
         logger.error(f"Error resetting context for user {user_id}: {e}")

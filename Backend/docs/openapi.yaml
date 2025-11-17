@@ -1,0 +1,481 @@
+openapi: 3.0.3
+info:
+  title: Alfa HAK Copilot API
+  description: |
+    Swagger спецификация для продакшен-инстанса Alfa HAK Copilot.
+
+    Бэкенд основан на FastAPI и обслуживает Telegram-бота, мини-веб-приложение,
+    загрузку документов, калькулятор и интеграцию с Альфа-Бизнесом.
+  version: "1.0.0"
+  contact:
+    name: Alfa HAK Copilot Team
+    url: https://alpha-hak-copilot.ruka.me
+servers:
+  - url: https://api-alpha-hak-copilot.ruka.me/api
+    description: Production (24/7)
+  - url: http://localhost:8000/api
+    description: Local development
+tags:
+  - name: health
+    description: Health checks and status probes
+  - name: knowledge
+    description: Документы, векторное хранилище и поиск
+  - name: chat
+    description: Диалоги с ИИ, калькулятор и инструменты
+  - name: integration
+    description: Веб-онбординг и интеграция с Альфа-Бизнес
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Проверка статуса API
+      responses:
+        '200':
+          description: API online
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  environment:
+                    type: string
+                    example: prod
+  /knowledge/documents:
+    post:
+      tags: [knowledge]
+      summary: Загрузка и индексация документа
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [user_id, file, title]
+              properties:
+                user_id:
+                  type: string
+                  description: Telegram user id
+                title:
+                  type: string
+                description:
+                  type: string
+                  nullable: true
+                category:
+                  type: string
+                  default: general
+                tags_json:
+                  type: string
+                  description: JSON-массив тегов
+                  example: '["finance", "risk"]'
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Документ принят
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentSource'
+    get:
+      tags: [knowledge]
+      summary: Список документов
+      parameters:
+        - in: query
+          name: user_id
+          schema:
+            type: string
+          required: false
+          description: Фильтр по владельцу
+      responses:
+        '200':
+          description: Коллекция документов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DocumentSource'
+  /knowledge/search:
+    get:
+      tags: [knowledge]
+      summary: Векторный поиск по памяти
+      parameters:
+        - in: query
+          name: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Результаты поиска
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeSearchResponse'
+  /chat/messages:
+    post:
+      tags: [chat]
+      summary: Отправить сообщение ИИ-оркестратору
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+      responses:
+        '200':
+          description: Ответ ассистента или план калькулятора
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+  /chat/execute:
+    post:
+      tags: [chat]
+      summary: Выполнить подтверждённый калькуляторный план
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalculatorExecutionRequest'
+      responses:
+        '200':
+          description: Результат расчёта
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+        '404':
+          description: План не найден или истёк
+  /chat/context/{user_id}:
+    delete:
+      tags: [chat]
+      summary: Сброс контекста и диалога пользователя
+      parameters:
+        - $ref: '#/components/parameters/UserIdPath'
+      responses:
+        '200':
+          description: Контекст очищен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+        '500':
+          description: Ошибка при очистке
+  /integration/profile:
+    post:
+      tags: [integration]
+      summary: Сохранить профиль компании из web-app
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompanyProfile'
+      responses:
+        '200':
+          description: Профиль сохранён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyProfileResponse'
+  /integration/alpha-business:
+    post:
+      tags: [integration]
+      summary: Подтвердить привязку Альфа-Бизнес
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationConfirmation'
+      responses:
+        '200':
+          description: Интеграция активирована
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrationConfirmationResponse'
+  /integration/state/{user_id}:
+    get:
+      tags: [integration]
+      summary: Получить текущий статус онбординга
+      parameters:
+        - $ref: '#/components/parameters/UserIdPath'
+      responses:
+        '200':
+          description: Актуальные данные по профилю и интеграции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnboardingStateResponse'
+components:
+  parameters:
+    UserIdPath:
+      in: path
+      name: user_id
+      required: true
+      schema:
+        type: string
+      description: Telegram user id
+  schemas:
+    DocumentSource:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        category:
+          type: string
+          example: general
+        owner_id:
+          type: string
+          nullable: true
+        uploaded_at:
+          type: string
+          format: date-time
+        size_bytes:
+          type: integer
+        content_type:
+          type: string
+        original_filename:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+        checksum:
+          type: string
+          nullable: true
+        status:
+          type: string
+          example: indexed
+    KnowledgeSearchHit:
+      type: object
+      properties:
+        id:
+          type: string
+        score:
+          type: number
+          format: float
+        text:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+          nullable: true
+    KnowledgeSearchResponse:
+      type: object
+      properties:
+        query:
+          type: string
+        hits:
+          type: array
+          items:
+            $ref: '#/components/schemas/KnowledgeSearchHit'
+        embedding_available:
+          type: boolean
+          default: true
+    ChatMessage:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [user, assistant, system, tool]
+        content:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+          nullable: true
+    OrchestrationDecision:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [advisor, calculator]
+        summary:
+          type: string
+          nullable: true
+        calculator_instructions:
+          type: string
+          nullable: true
+        tool_calls:
+          type: array
+          items:
+            type: string
+        metadata:
+          type: object
+          additionalProperties: true
+    ToolExecutionResult:
+      type: object
+      properties:
+        name:
+          type: string
+        output:
+          type: string
+        success:
+          type: boolean
+        error:
+          type: string
+          nullable: true
+        duration_ms:
+          type: integer
+          nullable: true
+    ChatRequest:
+      type: object
+      required: [user_id, content]
+      properties:
+        user_id:
+          type: string
+        content:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+          nullable: true
+    ChatResponse:
+      type: object
+      properties:
+        reply:
+          $ref: '#/components/schemas/ChatMessage'
+        decision:
+          $ref: '#/components/schemas/OrchestrationDecision'
+        knowledge_hits:
+          type: array
+          items:
+            $ref: '#/components/schemas/KnowledgeSearchHit'
+        tool_results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ToolExecutionResult'
+    CalculatorExecutionRequest:
+      type: object
+      required: [plan_id, user_id]
+      properties:
+        plan_id:
+          type: string
+        user_id:
+          type: string
+    CompanyProfile:
+      type: object
+      required: [user_id, company_name]
+      properties:
+        user_id:
+          type: string
+        company_name:
+          type: string
+        industry:
+          type: string
+          nullable: true
+        employees:
+          type: integer
+          nullable: true
+        annual_revenue:
+          type: string
+          nullable: true
+        key_systems:
+          type: string
+          nullable: true
+        goals:
+          type: string
+          nullable: true
+        language:
+          type: string
+          default: ru
+        created_at:
+          type: string
+          format: date-time
+    CompanyProfileResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        profile:
+          $ref: '#/components/schemas/CompanyProfile'
+    IntegrationConfirmation:
+      type: object
+      required: [user_id]
+      properties:
+        user_id:
+          type: string
+        provider:
+          type: string
+          default: alpha_business
+        connected_at:
+          type: string
+          format: date-time
+    IntegrationStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          example: connected
+        provider:
+          type: string
+        connected_at:
+          type: string
+          format: date-time
+          nullable: true
+    IntegrationConfirmationResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        integration:
+          $ref: '#/components/schemas/IntegrationStatus'
+    ProfileIndexStatus:
+      type: object
+      properties:
+        status:
+          type: string
+        queued_at:
+          type: string
+          format: date-time
+          nullable: true
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+        reason:
+          type: string
+          nullable: true
+    OnboardingStateResponse:
+      type: object
+      properties:
+        user_id:
+          type: string
+        profile:
+          $ref: '#/components/schemas/CompanyProfile'
+          nullable: true
+        profile_status:
+          $ref: '#/components/schemas/ProfileIndexStatus'
+          nullable: true
+        integration:
+          $ref: '#/components/schemas/IntegrationStatus'
+          nullable: true

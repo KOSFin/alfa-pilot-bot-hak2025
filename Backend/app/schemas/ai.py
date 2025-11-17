@@ -1,4 +1,3 @@
-"""Schemas for AI orchestration flows."""
 from __future__ import annotations
 
 from typing import Literal, Optional
@@ -9,7 +8,6 @@ from .base import BaseSchema
 
 
 class PlannerResponse(BaseSchema):
-    """Output of the reasoning LLM for decision making."""
 
     intent: Literal["advisor", "calculator"]
     confidence: float = Field(default=0.5)
@@ -20,7 +18,6 @@ class PlannerResponse(BaseSchema):
 
 
 class CalculatorPrompt(BaseSchema):
-    """Prompt sent to LLM when calculator branch selected."""
 
     instructions: str
     parameters: dict = Field(default_factory=dict)
@@ -28,7 +25,6 @@ class CalculatorPrompt(BaseSchema):
 
 
 class AdvisorPrompt(BaseSchema):
-    """Prompt for regular advisory responses."""
 
     instructions: str
     context: str

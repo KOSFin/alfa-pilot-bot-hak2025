@@ -1,4 +1,3 @@
-"""Document ingestion endpoints."""
 from __future__ import annotations
 
 import json
@@ -44,7 +43,7 @@ def load_text_from_upload(file_path: Path, content_type: str) -> str:
     if content_type in {"application/pdf"}:
         try:
             from pypdf import PdfReader
-        except ImportError as exc:  # pragma: no cover - handled via dependency
+        except ImportError as exc:
             raise HTTPException(status_code=500, detail="PDF ingestion requires pypdf") from exc
         reader = PdfReader(str(file_path))
         text = "\n".join(page.extract_text() or "" for page in reader.pages)
@@ -113,7 +112,6 @@ async def list_documents(
         data = await store.get_json(key)
         if data:
             doc = DocumentSource(**data)
-            # If user_id is provided, only return documents belonging to that user
             if user_id is None or doc.owner_id == user_id:
                 documents.append(doc)
     documents.sort(key=lambda item: item.uploaded_at, reverse=True)
