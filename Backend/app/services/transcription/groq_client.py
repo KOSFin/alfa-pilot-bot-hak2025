@@ -24,7 +24,7 @@ class GroqTranscriber:
         self._http_client = httpx.AsyncClient(timeout=60.0)
 
     async def transcribe(self, file: BinaryIO, filename: str, *, language: str = "ru", prompt: str | None = None) -> dict:
-        logger.info("Transcribing audio via Groq Whisper")
+        logger.info("Transcribing audio via Groq Whisper with language: %s", language)
         # Groq API requires all parameters to be sent as multipart/form-data fields (not JSON)
         files = {
             "file": (filename, file, "audio/mpeg"),
@@ -35,7 +35,10 @@ class GroqTranscriber:
         }
         if prompt:
             files["prompt"] = (None, prompt)
-        headers = {"Authorization": f"Bearer {self._api_key}"}
+        headers = {
+            "Authorization": f"Bearer {self._api_key}",
+        }
+        logger.debug("Making request to: %s with headers: %s", self._api_url, {k: v if k != "Authorization" else "[HIDDEN]" for k, v in headers.items()})
         response = await self._http_client.post(self._api_url, files=files, headers=headers)
         response.raise_for_status()
         payload = response.json()
@@ -63,7 +66,9 @@ class GroqTranscriber:
                 }
                 if kwargs.get("prompt"):
                     files["prompt"] = (None, kwargs["prompt"])
-                headers = {"Authorization": f"Bearer {self._api_key}"}
+                headers = {
+                    "Authorization": f"Bearer {self._api_key}",
+                }
                 response = await client.post(self._api_url, files=files, headers=headers)
                 response.raise_for_status()
                 return response.json()

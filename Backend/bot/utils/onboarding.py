@@ -72,7 +72,11 @@ def build_keyboard_for_stage(stage: OnboardingStage, user_id: str | None = None)
         text="Подключить Альфа-Бизнес",
         web_app=WebAppInfo(url=integration_url),
     )
-    # Add reset context button for the ready stage (permanent keyboard)
+    # Add language selection button and reset context button for the ready stage (permanent keyboard)
+    language_button = InlineKeyboardButton(
+        text="🌐 Язык распознавания",
+        callback_data="select_language"
+    )
     reset_context_button = InlineKeyboardButton(
         text="🔄 Сбросить контекст",
         callback_data="reset_context"
@@ -81,8 +85,8 @@ def build_keyboard_for_stage(stage: OnboardingStage, user_id: str | None = None)
         return InlineKeyboardMarkup(inline_keyboard=[[profile_button]])
     if stage == OnboardingStage.INTEGRATION:
         return InlineKeyboardMarkup(inline_keyboard=[[integration_button]])
-    # For ready stage, include both profile and integration buttons plus reset context
-    return InlineKeyboardMarkup(inline_keyboard=[[profile_button], [integration_button], [reset_context_button]])
+    # For ready stage, include both profile and integration buttons plus language and reset context
+    return InlineKeyboardMarkup(inline_keyboard=[[profile_button], [integration_button], [language_button], [reset_context_button]])
 
 
 async def ensure_onboarding_ready(message: Message, store: RedisStore | None = None) -> tuple[bool, OnboardingStatus]:

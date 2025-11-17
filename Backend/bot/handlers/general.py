@@ -10,7 +10,7 @@ from textwrap import dedent
 
 import httpx
 from aiogram import F, Router
-from aiogram.filters import CommandStart
+from aiogram.filters import Command, CommandStart
 from aiogram.types import Message
 
 from app.config import get_settings
@@ -185,3 +185,32 @@ async def handle_web_app_data(message: Message) -> None:
     
     # Web app data is just for confirmation, actual notifications come from API
     await message.answer("✅ Данные получены!")
+
+
+@router.message(Command("language"))
+async def cmd_language(message: Message) -> None:
+    """Handle /language command to show language selection."""
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+
+    # Get current language from user profile
+    user_id = str(message.from_user.id)
+    store = RedisStore()
+    profile = await store.get_json(f"company-profile:{user_id}") or {}
+    current_lang = profile.get("language", "ru")
+
+    lang_text = "Русский" if current_lang == "ru" else "English"
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🇷🇺 Русский", callback_data="set_lang_ru"),
+            InlineKeyboardButton(text="🇬🇧 English", callback_data="set_lang_en")
+        ],
+        [
+            InlineKeyboardButton(text="◀️ Назад", callback_data="go_back_profile")
+        ]
+    ])
+
+    await message.answer(
+        f"Текущий язык распознавания речи: <b>{lang_text}</b>\n\nВыберите язык для голосовых сообщений:",
+        reply_markup=keyboard
+    )
