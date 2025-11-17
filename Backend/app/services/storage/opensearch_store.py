@@ -104,7 +104,7 @@ class OpenSearchVectorStore:
                         },
                         {
                             "term": {
-                                "metadata.owner_id.keyword": user_id
+                                "metadata.owner_id": user_id
                             }
                         }
                     ]
