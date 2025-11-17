@@ -14,7 +14,6 @@ from aiogram.fsm.storage.redis import RedisStorage
 from aiogram.types import Update
 from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
 
 from .config import get_settings
 from .routers import chat, documents, health, integration
@@ -129,12 +128,16 @@ def with_prefix(path: str) -> str:
         return path
     return f"{prefix}{path}"
 
+docs_url = with_prefix("/docs")
+redoc_url = with_prefix("/redoc")
+openapi_url = with_prefix("/openapi.json")
+
 app = FastAPI(
     title=settings.project_name,
     lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json",
+    docs_url=docs_url,
+    redoc_url=redoc_url,
+    openapi_url=openapi_url,
 )
 
 app.add_middleware(
@@ -152,24 +155,6 @@ api_router.include_router(chat.router)
 api_router.include_router(integration.router)
 
 app.include_router(api_router, prefix=settings.api_prefix)
-
-prefixed_docs = with_prefix("/docs")
-if prefixed_docs != "/docs":
-    @app.get(prefixed_docs, include_in_schema=False)
-    async def redirect_docs() -> RedirectResponse:
-        return RedirectResponse(url="/docs")
-
-prefixed_redoc = with_prefix("/redoc")
-if prefixed_redoc != "/redoc":
-    @app.get(prefixed_redoc, include_in_schema=False)
-    async def redirect_redoc() -> RedirectResponse:
-        return RedirectResponse(url="/redoc")
-
-prefixed_openapi = with_prefix("/openapi.json")
-if prefixed_openapi != "/openapi.json":
-    @app.get(prefixed_openapi, include_in_schema=False)
-    async def redirect_openapi() -> RedirectResponse:
-        return RedirectResponse(url="/openapi.json")
 
 
 @app.post("/telegram/webhook")
