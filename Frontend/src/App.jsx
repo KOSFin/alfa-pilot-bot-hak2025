@@ -159,10 +159,15 @@ function App() {
     setIsSavingCompany(true)
     try {
       await saveCompanyProfile(payload)
-      await loadOnboardingState()
-
+      setCompanyStatus('Профиль сохранён! Уведомление отправлено в бот.')
+      
       if (isTelegram) {
-        telegramWebApp?.sendData(JSON.stringify({ type: 'company_profile', ...payload }))
+        telegramWebApp?.sendData(JSON.stringify({ type: 'company_profile', user_id: userId }))
+        setTimeout(() => {
+          telegramWebApp?.close()
+        }, 1500)
+      } else {
+        await loadOnboardingState()
       }
     } catch (error) {
       setCompanyStatus(error.message)
@@ -541,10 +546,10 @@ function IntegrationStub({ userId, telegramWebApp, isTelegram }) {
     setIsSubmitting(true)
     try {
       await confirmAlphaBusiness({ user_id: userId })
-      setStatus('Интеграция подтверждена. Возвращаемся в бота...')
+      setStatus('Интеграция подключена! Уведомление отправлено в бот.')
       if (telegramWebApp) {
         telegramWebApp.sendData(JSON.stringify({ type: 'alpha_business_connected', user_id: userId }))
-        setTimeout(() => telegramWebApp.close(), 400)
+        setTimeout(() => telegramWebApp.close(), 1500)
       }
     } catch (error) {
       setStatus(error.message)

@@ -34,6 +34,75 @@ def get_knowledge_base(request: Request) -> KnowledgeBase:
     return request.app.state.knowledge_base
 
 
+async def _notify_bot_profile_saved(request: Request, user_id: str) -> None:
+    """Send a message to the bot after profile is saved."""
+    try:
+        from aiogram import Bot
+        from textwrap import dedent
+        bot: Bot = request.app.state.bot
+        
+        text = dedent(
+            """
+            ✅ <b>Профиль сохранён и отправлен в очередь на индексацию!</b>
+            
+            🔗 <b>Следующий шаг — подключение Альфа-Бизнес</b>
+            Это позволит мне анализировать ваши финансовые операции и давать более точные рекомендации. Нажмите кнопку ниже, чтобы подключить интеграцию (это займёт 10 секунд).
+            """
+        ).strip()
+        
+        from bot.utils.onboarding import OnboardingStage, build_keyboard_for_stage
+        await bot.send_message(
+            chat_id=int(user_id),
+            text=text,
+            reply_markup=build_keyboard_for_stage(OnboardingStage.INTEGRATION)
+        )
+        logger.info("Sent profile saved notification to user %s", user_id)
+    except Exception as exc:
+        logger.exception("Failed to notify bot about profile save for user %s: %s", user_id, exc)
+
+
+async def _notify_bot_integration_connected(request: Request, user_id: str) -> None:
+    """Send a message to the bot after integration is connected."""
+    try:
+        from aiogram import Bot
+        from textwrap import dedent
+        bot: Bot = request.app.state.bot
+        
+        text = dedent(
+            """
+            🎉 <b>Отлично! Альфа-Бизнес подключён.</b>
+            
+            ✅ Онбординг завершён! Теперь я готов работать с полным контекстом вашего бизнеса.
+            
+            📖 <b>Как использовать бота:</b>
+            
+            1️⃣ <b>Задавайте вопросы</b>
+            Просто напишите текстом или отправьте голосовое сообщение. Я отвечу с учётом контекста вашей компании и финансовых данных.
+            
+            2️⃣ <b>Загружайте документы</b>
+            Через веб-приложение можно загрузить документы (отчёты, регламенты, контракты). Я буду использовать их при ответах.
+            
+            3️⃣ <b>Выполняйте расчёты</b>
+            Если я предложу расчётный план, вы сможете выполнить его командой /execute_<id>
+            
+            4️⃣ <b>Используйте веб-интерфейс</b>
+            Для работы с документами и детального диалога откройте веб-приложение.
+            
+            Готов к работе! Чем могу помочь?
+            """
+        ).strip()
+        
+        from bot.utils.onboarding import OnboardingStage, build_keyboard_for_stage
+        await bot.send_message(
+            chat_id=int(user_id),
+            text=text,
+            reply_markup=build_keyboard_for_stage(OnboardingStage.READY)
+        )
+        logger.info("Sent integration connected notification to user %s", user_id)
+    except Exception as exc:
+        logger.exception("Failed to notify bot about integration for user %s: %s", user_id, exc)
+
+
 async def _index_profile_background(profile: CompanyProfile, knowledge_base: KnowledgeBase) -> None:
     """Convert profile to text and index it asynchronously."""
 
@@ -96,6 +165,7 @@ async def _index_profile_background(profile: CompanyProfile, knowledge_base: Kno
 async def save_company_profile(
     profile: CompanyProfile,
     background_tasks: BackgroundTasks,
+    request: Request,
     store: RedisStore = Depends(get_store),
     knowledge_base: KnowledgeBase = Depends(get_knowledge_base),
 ) -> CompanyProfileResponse:
@@ -112,6 +182,7 @@ async def save_company_profile(
         {"status": "queued", "queued_at": datetime.utcnow().isoformat()},
     )
     background_tasks.add_task(_index_profile_background, profile, knowledge_base)
+    background_tasks.add_task(_notify_bot_profile_saved, request, profile.user_id)
     logger.info("Stored company profile for user %s", profile.user_id)
     return CompanyProfileResponse(profile=profile)
 
@@ -119,6 +190,8 @@ async def save_company_profile(
 @router.post("/alpha-business", response_model=IntegrationConfirmationResponse)
 async def confirm_alpha_business(
     confirmation: IntegrationConfirmation,
+    background_tasks: BackgroundTasks,
+    request: Request,
     store: RedisStore = Depends(get_store),
 ) -> IntegrationConfirmationResponse:
     payload = IntegrationStatus(
@@ -127,6 +200,7 @@ async def confirm_alpha_business(
         connected_at=confirmation.connected_at,
     )
     await store.set_json(f"integration:alpha-business:{confirmation.user_id}", payload.model_dump(mode="json"))
+    background_tasks.add_task(_notify_bot_integration_connected, request, confirmation.user_id)
     logger.info("Alpha Business integration confirmed for user %s", confirmation.user_id)
     return IntegrationConfirmationResponse(integration=payload)
 
