@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     project_name: str = Field(default="Alfa Pilot Smart Calculator")
     environment: Literal["local", "dev", "prod"] = Field(default="local")
     api_prefix: str = Field(default="/api", alias="API_PREFIX")
-    api_base_url: str = Field(default="http://localhost:8000/api")
+    api_base_url: str = Field(default="http://localhost:8000/api", alias="AI_LLM_API_BASE_URL")
     webhook_base_url: Optional[str] = Field(default=None, alias="WEBHOOK_BASE_URL")
     webhook_secret_token: Optional[str] = Field(default=None, alias="WEBHOOK_SECRET_TOKEN")
 
