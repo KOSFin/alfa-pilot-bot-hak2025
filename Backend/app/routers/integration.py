@@ -142,6 +142,7 @@ async def _index_profile_background(profile: CompanyProfile, knowledge_base: Kno
         {"status": "processing", "started_at": datetime.utcnow().isoformat()},
     )
 
+    # Create multiple representations of the profile to improve recall
     fields = {
         "Название": profile.company_name,
         "Индустрия": profile.industry,
@@ -150,14 +151,47 @@ async def _index_profile_background(profile: CompanyProfile, knowledge_base: Kno
         "Системы": profile.key_systems,
         "Цели": profile.goals,
     }
+    
+    # Primary summary
     lines = [f"{label}: {value}" for label, value in fields.items() if value]
     summary = "Профиль компании\n" + "\n".join(lines)
+
+    # Additional texts to improve vector search recall
+    additional_texts = []
+    
+    # Add company name variations for better matching
+    if profile.company_name:
+        # Add company name with variations for better matching
+        additional_texts.extend([
+            f"Компания: {profile.company_name}",
+            f"Название моей компании: {profile.company_name}",
+            f"Моя компания называется: {profile.company_name}",
+            f"Организация: {profile.company_name}",
+            f"Моя организация: {profile.company_name}",
+            f"Фирма: {profile.company_name}",
+            f"Компания {profile.company_name} работает в сфере {profile.industry or 'неизвестной индустрии'}"
+        ])
+        
+        # Include company name in context for various types of queries
+        if profile.industry:
+            additional_texts.append(f"Компания {profile.company_name} работает в индустрии {profile.industry}")
+        if profile.annual_revenue:
+            additional_texts.append(f"Компания {profile.company_name} имеет выручку {profile.annual_revenue}")
+        if profile.employees:
+            additional_texts.append(f"Компания {profile.company_name} насчитывает {profile.employees} сотрудников")
 
     dialog_id = f"profile:{profile.user_id}:{uuid.uuid4()}"
     metadata = {"user_id": profile.user_id, "source": "company_profile"}
 
     try:
+        # Index primary summary
         indexed = await knowledge_base.index_dialog(dialog_id, summary, metadata)
+        
+        # Index additional representations with the same metadata
+        for i, additional_text in enumerate(additional_texts):
+            additional_dialog_id = f"profile:{profile.user_id}:{uuid.uuid4()}:{i}"
+            await knowledge_base.index_dialog(additional_dialog_id, additional_text, metadata)
+        
     except Exception as exc:  # pragma: no cover - defensive logging
         logger.exception("Failed to index company profile for user %s", profile.user_id)
         await store.set_json(
