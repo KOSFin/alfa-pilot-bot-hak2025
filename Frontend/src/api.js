@@ -71,6 +71,14 @@ export async function confirmAlphaBusiness(payload) {
   return response.json();
 }
 
+export async function fetchOnboardingState(userId) {
+  const response = await fetch(`${API_BASE_URL}/integration/state/${encodeURIComponent(userId)}`);
+  if (!response.ok) {
+    throw new Error('Не удалось получить состояние онбординга');
+  }
+  return response.json();
+}
+
 export async function executePlan(payload) {
   const response = await fetch(`${API_BASE_URL}/chat/execute`, {
     method: 'POST',

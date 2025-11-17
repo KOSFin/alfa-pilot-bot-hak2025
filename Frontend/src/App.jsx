@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import './App.css'
 
 import {
@@ -6,6 +6,7 @@ import {
   confirmAlphaBusiness,
   fetchDocuments,
   fetchHealth,
+  fetchOnboardingState,
   searchKnowledge,
   sendChatMessage,
   saveCompanyProfile,
@@ -66,6 +67,48 @@ function App() {
   const [companyForm, setCompanyForm] = useState({ ...INITIAL_COMPANY_FORM })
   const [companyStatus, setCompanyStatus] = useState('')
   const [isSavingCompany, setIsSavingCompany] = useState(false)
+  const [onboardingState, setOnboardingState] = useState(null)
+
+  const loadOnboardingState = useCallback(async () => {
+    try {
+      const state = await fetchOnboardingState(userId)
+      setOnboardingState(state)
+      if (state.profile) {
+        setCompanyForm({
+          company_name: state.profile.company_name ?? '',
+          industry: state.profile.industry ?? '',
+          employees: state.profile.employees != null ? String(state.profile.employees) : '',
+          annual_revenue: state.profile.annual_revenue ?? '',
+          key_systems: state.profile.key_systems ?? '',
+          goals: state.profile.goals ?? '',
+        })
+        const status = state.profile_status?.status
+        if (status === 'indexed') {
+          setCompanyStatus('Профиль сохранён и проиндексирован. Можно переходить к документам и диалогу.')
+        } else if (status === 'processing') {
+          setCompanyStatus('Профиль обрабатывается. Индексация началась, скоро всё будет готово.')
+        } else if (status === 'failed') {
+          setCompanyStatus('Не удалось проиндексировать профиль. Попробуйте сохранить ещё раз позже.')
+        } else if (status === 'queued') {
+          setCompanyStatus('Профиль сохранён и поставлен в очередь на индексацию.')
+        } else {
+          setCompanyStatus('Профиль сохранён. Ожидаем индексацию.')
+        }
+      } else {
+        setCompanyForm({ ...INITIAL_COMPANY_FORM })
+        setCompanyStatus('Заполните профиль, чтобы бот учитывал контекст вашей компании.')
+      }
+    } catch (error) {
+      console.error(error)
+      setOnboardingState(null)
+      setCompanyForm({ ...INITIAL_COMPANY_FORM })
+      setCompanyStatus('Заполните профиль, чтобы бот учитывал контекст вашей компании.')
+    }
+  }, [userId])
+
+  const profileSaved = Boolean(onboardingState?.profile)
+  const integrationConnected = onboardingState?.integration?.status === 'connected'
+  const onboardingComplete = profileSaved && integrationConnected
 
   useEffect(() => {
     if (telegramWebApp) {
@@ -76,9 +119,10 @@ function App() {
       return
     }
     fetchHealth().then(setHealthStatus).catch(() => setHealthStatus({ status: 'error' }))
+    loadOnboardingState()
     refreshDocuments()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [telegramWebApp, appMode])
+  }, [telegramWebApp, appMode, loadOnboardingState])
 
   async function refreshDocuments() {
     try {
@@ -115,18 +159,11 @@ function App() {
     setIsSavingCompany(true)
     try {
       await saveCompanyProfile(payload)
-      setCompanyStatus(
-        isTelegram
-          ? 'Профиль сохранён и поставлен в индексацию. Возвращаемся в диалог в Telegram.'
-          : 'Профиль сохранён и отправлен в индексацию. Можно перейти к документам и диалогу.'
-      )
+      await loadOnboardingState()
 
       if (isTelegram) {
         telegramWebApp?.sendData(JSON.stringify({ type: 'company_profile', ...payload }))
-        setTimeout(() => telegramWebApp?.close(), 400)
       }
-
-      setCompanyForm({ ...INITIAL_COMPANY_FORM })
     } catch (error) {
       setCompanyStatus(error.message)
     } finally {
@@ -136,6 +173,10 @@ function App() {
 
   async function handleUpload(event) {
     event.preventDefault()
+    if (!onboardingComplete) {
+      setDocUploadProgress('Сначала завершите онбординг, чтобы загружать документы.')
+      return
+    }
     const form = event.currentTarget
     const fileInput = form.elements.file
     if (!fileInput.files.length) {
@@ -145,8 +186,12 @@ function App() {
     const formData = new FormData(form)
     try {
       setDocUploadProgress('Загружаем документ...')
-      await uploadDocument(formData)
-      setDocUploadProgress('Документ загружен и отправлен в индексацию.')
+      const uploaded = await uploadDocument(formData)
+      if (uploaded.status === 'indexed') {
+        setDocUploadProgress('Документ загружен и отправлен в индексацию.')
+      } else {
+        setDocUploadProgress('Документ сохранён, но эмбеддинг недоступен. Попробуйте позже.')
+      }
       form.reset()
       await refreshDocuments()
     } catch (error) {
@@ -156,6 +201,9 @@ function App() {
 
   async function handleChatSubmit(event) {
     event.preventDefault()
+    if (!onboardingComplete) {
+      return
+    }
     if (!chatInput.trim()) {
       return
     }
@@ -319,9 +367,15 @@ function App() {
             </button>
             {companyStatus && <p className="helper-text">{companyStatus}</p>}
             {isTelegram && (
-              <p className="helper-text">После сохранения бот отправит подтверждение и закроет мини-приложение.</p>
+              <p className="helper-text">После сохранения бот отправит подтверждение, окно можно закрыть вручную.</p>
             )}
           </form>
+          {profileSaved && !integrationConnected && (
+            <p className="helper-text">Профиль сохранён. Следующий шаг — подключите Альфа-Бизнес через команду /start в Telegram.</p>
+          )}
+          {integrationConnected && (
+            <p className="helper-text">Альфа-Бизнес подключён. Можно продолжать работу с документами и диалогом.</p>
+          )}
         </section>
 
         <section className="panel">
@@ -357,8 +411,11 @@ function App() {
               <span>Теги</span>
               <input type="text" name="tags_json" placeholder='["финансы", "отчёт"]' />
             </label>
-            <button type="submit" className="primary" disabled={isLoading}>Загрузить</button>
+            <button type="submit" className="primary" disabled={isLoading || !onboardingComplete}>Загрузить</button>
             {docUploadProgress && <p className="helper-text">{docUploadProgress}</p>}
+            {!onboardingComplete && (
+              <p className="helper-text">Заполнение профиля и подключение Альфа-Бизнес обязательны перед загрузкой документов.</p>
+            )}
           </form>
           <div className="document-list">
             <h3>Последние документы</h3>
@@ -370,6 +427,7 @@ function App() {
                   <li key={doc.id}>
                     <strong>{doc.title}</strong>
                     <span>{doc.category}</span>
+                    <span>Статус: {doc.status === 'indexed' ? 'проиндексирован' : 'эмбеддинг недоступен'}</span>
                     <span>{new Date(doc.uploaded_at).toLocaleString()}</span>
                   </li>
                 ))}
@@ -396,9 +454,13 @@ function App() {
                 onChange={(event) => setChatInput(event.target.value)}
                 placeholder="Опишите расчёт или задайте вопрос"
                 rows={3}
+                disabled={!onboardingComplete}
               />
-              <button type="submit" className="primary" disabled={isLoading}>Отправить</button>
+              <button type="submit" className="primary" disabled={isLoading || !onboardingComplete}>Отправить</button>
             </form>
+            {!onboardingComplete && (
+              <p className="helper-text">Сначала завершите заполнение профиля и подключение Альфа-Бизнес, затем продолжайте диалог.</p>
+            )}
             {pendingPlan && (
               <div className="alert">
                 <strong>Нужна ваша проверка</strong>

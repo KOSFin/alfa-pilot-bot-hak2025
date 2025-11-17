@@ -14,6 +14,7 @@ from aiogram.types import Message
 
 from app.config import get_settings
 from app.services.storage.redis_store import RedisStore
+from app.schemas.integration import IntegrationStatus
 
 from ..utils.onboarding import (
     OnboardingStage,
@@ -105,11 +106,11 @@ async def handle_web_app_data(message: Message) -> None:
 
     if payload_type == "alpha_business_connected":
         logger.info("Received Alfa Business integration confirmation from user %s", user_id)
-        integration_payload = {
-            "status": "connected",
-            "connected_at": datetime.utcnow().isoformat(),
-        }
-        await store.set_json(f"integration:alpha-business:{user_id}", integration_payload)
+        integration_payload = IntegrationStatus(status="connected", connected_at=datetime.utcnow())
+        await store.set_json(
+            f"integration:alpha-business:{user_id}",
+            integration_payload.model_dump(mode="json"),
+        )
         reply = dedent(
             """
             Готово — отметили подключение Альфа-Бизнес. Я завершил знакомство и готов работать. Вот что можно сделать дальше:

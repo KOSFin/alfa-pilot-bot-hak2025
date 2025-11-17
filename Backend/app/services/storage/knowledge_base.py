@@ -23,8 +23,9 @@ class KnowledgeBase:
     async def initialize(self) -> None:
         await self._store.ensure_indices()
 
-    async def ingest(self, source: DocumentSource, chunks: Iterable[str]) -> None:
+    async def ingest(self, source: DocumentSource, chunks: Iterable[str]) -> bool:
         logger.info("Ingesting document %s", source.id)
+        indexed_any = False
         for idx, chunk in enumerate(chunks):
             chunk_id = f"{source.id}:{idx}"
             try:
@@ -35,6 +36,11 @@ class KnowledgeBase:
             metadata = source.model_dump()
             metadata.update({"chunk_index": idx})
             await self._store.upsert_document(chunk_id, chunk, vector, metadata)
+            indexed_any = True
+
+        if not indexed_any:
+            logger.warning("No chunks indexed for document %s", source.id)
+        return indexed_any
 
     async def index_dialog(self, dialog_id: str, text: str, metadata: dict[str, str]) -> None:
         try:

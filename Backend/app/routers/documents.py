@@ -93,9 +93,10 @@ async def upload_document(
     )
 
     chunks = chunk_text(text_content)
-    await knowledge_base.ingest(source, chunks)
+    ingested = await knowledge_base.ingest(source, chunks)
+    source.status = "indexed" if ingested else "embedding_failed"
 
-    await store.set_json(f"doc:{document_id}", source.model_dump())
+    await store.set_json(f"doc:{document_id}", source.model_dump(mode="json"))
 
     return source
 

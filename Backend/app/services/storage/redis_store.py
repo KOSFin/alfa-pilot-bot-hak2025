@@ -5,6 +5,7 @@ import asyncio
 import json
 import logging
 from collections import defaultdict
+from datetime import date, datetime
 from fnmatch import fnmatch
 from typing import Any, DefaultDict
 
@@ -18,6 +19,12 @@ logger = logging.getLogger(__name__)
 _memory_lock = asyncio.Lock()
 _memory_lists: DefaultDict[str, list[str]] = defaultdict(list)
 _memory_json: dict[str, str] = {}
+
+
+def _json_default(value: Any) -> Any:
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    raise TypeError(f"Object of type {value.__class__.__name__} is not JSON serializable")
 
 
 class RedisStore:
@@ -63,7 +70,7 @@ class RedisStore:
             return [json.loads(item) for item in items]
 
     async def set_json(self, key: str, value: dict[str, Any], expire: int | None = None) -> None:
-        payload = json.dumps(value)
+        payload = json.dumps(value, default=_json_default)
         if self._can_use_redis():
             try:
                 await self._client.set(key, payload, ex=expire)

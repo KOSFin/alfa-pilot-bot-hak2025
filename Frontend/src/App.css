@@ -125,6 +125,12 @@ textarea {
   resize: vertical;
 }
 
+input:disabled,
+textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 button {
   border: none;
   border-radius: 12px;

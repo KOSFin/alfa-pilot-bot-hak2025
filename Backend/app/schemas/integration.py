@@ -35,8 +35,35 @@ class IntegrationConfirmation(BaseModel):
     connected_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class IntegrationStatus(BaseModel):
+    """Stored status of external integration."""
+
+    status: str = Field(default="disconnected")
+    provider: str = Field(default="alpha_business")
+    connected_at: Optional[datetime] = None
+
+
 class IntegrationConfirmationResponse(BaseModel):
     """Response payload for integration confirmation."""
 
     status: str = Field(default="ok")
-    integration: IntegrationConfirmation
+    integration: IntegrationStatus
+
+
+class ProfileIndexStatus(BaseModel):
+    """Status of profile indexing workflow."""
+
+    status: str
+    queued_at: Optional[datetime] = None
+    started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+    reason: Optional[str] = None
+
+
+class OnboardingStateResponse(BaseModel):
+    """Aggregated onboarding state for Web App."""
+
+    user_id: str
+    profile: Optional[CompanyProfile] = None
+    profile_status: Optional[ProfileIndexStatus] = None
+    integration: Optional[IntegrationStatus] = None
