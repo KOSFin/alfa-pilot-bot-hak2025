@@ -81,13 +81,14 @@ class GeminiClient:
             from collections import Counter
             import math
             
+            dimension = 768
             # Tokenize and clean
             words = re.findall(r'\w+', text.lower())
             if not words:
-                return [0.0] * 384  # Return zero vector
-            
-            # Create a simple hash-based vector (384 dimensions)
-            vector = [0.0] * 384
+                return [0.0] * dimension  # Return zero vector
+
+            # Create a simple hash-based vector (768 dimensions)
+            vector = [0.0] * dimension
             word_freq = Counter(words)
             
             # Distribute word frequencies across vector dimensions
@@ -95,7 +96,7 @@ class GeminiClient:
                 # Use word hash to determine vector positions
                 word_hash = hash(word)
                 for i in range(3):  # Each word affects 3 dimensions
-                    idx = (word_hash + i) % 384
+                    idx = (word_hash + i) % dimension
                     # TF-IDF approximation: log(1 + freq)
                     vector[idx] += math.log(1 + freq)
             
