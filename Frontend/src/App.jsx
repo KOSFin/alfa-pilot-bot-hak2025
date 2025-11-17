@@ -25,32 +25,28 @@ const INITIAL_COMPANY_FORM = {
 
 function usePersistentUserId() {
   return useMemo(() => {
+    const storageKey = 'alfa-pilot-user-id'
+    const params = new URLSearchParams(window.location.search)
+    const userIdFromQuery = params.get('tg_user_id') || params.get('user_id')
+    if (userIdFromQuery) {
+      window.localStorage.setItem(storageKey, userIdFromQuery)
+      return userIdFromQuery
+    }
     const tg = window.Telegram?.WebApp
     const telegramUserId = tg?.initDataUnsafe?.user?.id
     if (telegramUserId) {
-      console.log('Using Telegram user ID:', telegramUserId)
       return String(telegramUserId)
     }
-    // For development/testing without Telegram
-    const storageKey = 'alfa-pilot-user-id'
-    let stored = window.localStorage.getItem(storageKey)
-    
-    // If stored value is UUID, clear it and use demo ID
-    if (stored && stored.includes('-')) {
-      console.warn('Found UUID in storage, clearing it')
-      window.localStorage.removeItem(storageKey)
-      stored = null
-    }
-    
+    const stored = window.localStorage.getItem(storageKey)
     if (stored) {
       return stored
     }
-    
-    // Generate demo user ID (numeric) for non-Telegram testing
-    const demoId = Math.floor(Math.random() * 1000000000).toString()
-    console.log('Generated demo user ID:', demoId)
-    window.localStorage.setItem(storageKey, demoId)
-    return demoId
+    const uuid = window.crypto && typeof window.crypto.randomUUID === 'function'
+      ? window.crypto.randomUUID()
+      : Math.random().toString(36).slice(2)
+    const generated = uuid
+    window.localStorage.setItem(storageKey, generated)
+    return generated
   }, [])
 }
 
@@ -93,12 +89,17 @@ function App() {
           goals: state.profile.goals ?? '',
         })
         const status = state.profile_status?.status
+        const reason = state.profile_status?.reason
         if (status === 'indexed') {
           setCompanyStatus('✅ Профиль проиндексирован')
         } else if (status === 'processing') {
           setCompanyStatus('⏳ Индексация профиля...')
         } else if (status === 'failed') {
-          setCompanyStatus('❌ Ошибка индексации')
+          if (reason === 'embedding_unavailable') {
+            setCompanyStatus('⚠️ Профиль сохранён, но эмбеддинги недоступны для текущего региона. Попробуйте позже.')
+          } else {
+            setCompanyStatus('❌ Ошибка индексации')
+          }
         } else if (status === 'queued') {
           setCompanyStatus('⏳ Профиль в очереди на индексацию')
         } else {

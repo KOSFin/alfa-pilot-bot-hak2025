@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, WebAppInfo
 
 from app.config import get_settings
@@ -43,17 +45,32 @@ async def get_onboarding_status(user_id: str, store: RedisStore | None = None) -
     return OnboardingStatus(stage=stage, profile=profile, integration=integration)
 
 
-def build_keyboard_for_stage(stage: OnboardingStage) -> InlineKeyboardMarkup:
-    """Return onboarding keyboard tailored to the current stage."""
+def _build_web_app_url(base_url: str, user_id: str | None = None, extra: dict[str, str] | None = None) -> str:
+    """Attach query params (telegram user id, extra flags) to the web app URL."""
+
+    parsed = urlparse(base_url)
+    query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    if user_id:
+        query["tg_user_id"] = str(user_id)
+    if extra:
+        query.update({key: value for key, value in extra.items() if value is not None})
+    new_query = urlencode(query)
+    return urlunparse(parsed._replace(query=new_query))
+
+
+def build_keyboard_for_stage(stage: OnboardingStage, user_id: str | None = None) -> InlineKeyboardMarkup:
+    """Return onboarding keyboard tailored to the current stage with per-user URLs."""
 
     settings = get_settings()
+    profile_url = _build_web_app_url(settings.twa_url, user_id)
+    integration_url = _build_web_app_url(settings.twa_url, user_id, {"mode": "integration"})
     profile_button = InlineKeyboardButton(
         text="Заполнить профиль",
-        web_app=WebAppInfo(url=settings.twa_url),
+        web_app=WebAppInfo(url=profile_url),
     )
     integration_button = InlineKeyboardButton(
         text="Подключить Альфа-Бизнес",
-        web_app=WebAppInfo(url=f"{settings.twa_url}?mode=integration"),
+        web_app=WebAppInfo(url=integration_url),
     )
     if stage == OnboardingStage.PROFILE:
         return InlineKeyboardMarkup(inline_keyboard=[[profile_button]])
@@ -67,6 +84,7 @@ async def ensure_onboarding_ready(message: Message, store: RedisStore | None = N
 
     from_user = message.from_user
     user_id = str(from_user.id) if from_user else "anonymous"
+    keyboard_user_id = str(from_user.id) if from_user else None
     local_store = store or RedisStore()
     status = await get_onboarding_status(user_id, local_store)
 
@@ -84,7 +102,7 @@ async def ensure_onboarding_ready(message: Message, store: RedisStore | None = N
         ).strip()
         await message.answer(
             text,
-            reply_markup=build_keyboard_for_stage(OnboardingStage.PROFILE),
+            reply_markup=build_keyboard_for_stage(OnboardingStage.PROFILE, keyboard_user_id),
         )
         return False, status
 
@@ -98,6 +116,6 @@ async def ensure_onboarding_ready(message: Message, store: RedisStore | None = N
     ).strip()
     await message.answer(
         text,
-        reply_markup=build_keyboard_for_stage(OnboardingStage.INTEGRATION),
+        reply_markup=build_keyboard_for_stage(OnboardingStage.INTEGRATION, keyboard_user_id),
     )
     return False, status

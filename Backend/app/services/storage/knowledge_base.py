@@ -42,13 +42,16 @@ class KnowledgeBase:
             logger.warning("No chunks indexed for document %s", source.id)
         return indexed_any
 
-    async def index_dialog(self, dialog_id: str, text: str, metadata: dict[str, str]) -> None:
+    async def index_dialog(self, dialog_id: str, text: str, metadata: dict[str, str]) -> bool:
+        """Index dialog snippet; returns True if vector stored."""
+
         try:
             vector = await self._gemini.embed_text(text, model=self._embedding_model)
         except EmbeddingServiceUnavailable as exc:
             logger.warning("Unable to index dialog %s due to embedding issue: %s", dialog_id, exc)
-            return
+            return False
         await self._store.upsert_dialog(dialog_id, text, vector, metadata)
+        return True
 
     async def search(self, query: str, k: int = 5) -> KnowledgeSearchResponse:
         try:

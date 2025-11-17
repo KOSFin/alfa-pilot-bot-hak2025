@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 async def cmd_start(message: Message) -> None:
     logger.info("Handling /start for user %s", message.from_user.id if message.from_user else "unknown")
     user_id = str(message.from_user.id) if message.from_user else "anonymous"
+    keyboard_user_id = str(message.from_user.id) if message.from_user else None
     status = await get_onboarding_status(user_id)
 
     if status.stage == OnboardingStage.PROFILE:
@@ -78,7 +79,7 @@ async def cmd_start(message: Message) -> None:
             """
         ).strip()
 
-    await message.answer(text, reply_markup=build_keyboard_for_stage(status.stage))
+    await message.answer(text, reply_markup=build_keyboard_for_stage(status.stage, keyboard_user_id))
 
 
 @router.message(lambda message: bool(message.text and message.text.startswith("/execute_")))

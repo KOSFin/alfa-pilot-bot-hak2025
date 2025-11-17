@@ -17,7 +17,6 @@ from ..schemas.integration import (
     OnboardingStateResponse,
     ProfileIndexStatus,
 )
-from ..services.ai.gemini_client import EmbeddingServiceUnavailable
 from ..services.storage.knowledge_base import KnowledgeBase
 from ..services.storage.redis_store import RedisStore
 
@@ -46,20 +45,9 @@ async def _notify_bot_profile_saved(request: Request, user_id: str) -> None:
         if not bot:
             logger.error("Bot instance not available in app state")
             return
-        
-        # Check if user_id is numeric (Telegram ID)
-        try:
-            telegram_id = int(user_id)
-        except ValueError:
-            # If not numeric, try to find mapping in Redis
-            logger.warning("user_id is not numeric: %s, checking for Telegram ID mapping", user_id)
-            store = RedisStore()
-            telegram_id_str = await store.get_json(f"user-mapping:{user_id}")
-            if not telegram_id_str:
-                logger.error("No Telegram ID mapping found for user_id: %s", user_id)
-                return
-            telegram_id = int(telegram_id_str)
-            logger.info("Found Telegram ID mapping: %s -> %s", user_id, telegram_id)
+        if not (user_id and str(user_id).lstrip("-+ ").isdigit()):
+            logger.warning("Skip profile notification: user_id '%s' is not numeric", user_id)
+            return
         
         text = dedent(
             """
@@ -72,15 +60,14 @@ async def _notify_bot_profile_saved(request: Request, user_id: str) -> None:
         
         from bot.utils.onboarding import OnboardingStage, build_keyboard_for_stage
         
-        logger.info("Sending message to Telegram user %s", telegram_id)
+        chat_id = int(user_id)
+        logger.info("Sending message to user %s", chat_id)
         await bot.send_message(
-            chat_id=telegram_id,
+            chat_id=chat_id,
             text=text,
-            reply_markup=build_keyboard_for_stage(OnboardingStage.INTEGRATION)
+            reply_markup=build_keyboard_for_stage(OnboardingStage.INTEGRATION, str(chat_id))
         )
-        logger.info("Successfully sent profile saved notification to user %s", telegram_id)
-    except ValueError as exc:
-        logger.error("Invalid user_id format: %s - %s", user_id, exc)
+        logger.info("Successfully sent profile saved notification to user %s", user_id)
     except Exception as exc:
         logger.exception("Failed to notify bot about profile save for user %s: %s", user_id, exc)
 
@@ -97,20 +84,9 @@ async def _notify_bot_integration_connected(request: Request, user_id: str) -> N
         if not bot:
             logger.error("Bot instance not available in app state")
             return
-        
-        # Check if user_id is numeric (Telegram ID)
-        try:
-            telegram_id = int(user_id)
-        except ValueError:
-            # If not numeric, try to find mapping in Redis
-            logger.warning("user_id is not numeric: %s, checking for Telegram ID mapping", user_id)
-            store = RedisStore()
-            telegram_id_str = await store.get_json(f"user-mapping:{user_id}")
-            if not telegram_id_str:
-                logger.error("No Telegram ID mapping found for user_id: %s", user_id)
-                return
-            telegram_id = int(telegram_id_str)
-            logger.info("Found Telegram ID mapping: %s -> %s", user_id, telegram_id)
+        if not (user_id and str(user_id).lstrip("-+ ").isdigit()):
+            logger.warning("Skip integration notification: user_id '%s' is not numeric", user_id)
+            return
         
         text = dedent(
             """
@@ -138,15 +114,14 @@ async def _notify_bot_integration_connected(request: Request, user_id: str) -> N
         
         from bot.utils.onboarding import OnboardingStage, build_keyboard_for_stage
         
-        logger.info("Sending message to Telegram user %s", telegram_id)
+        chat_id = int(user_id)
+        logger.info("Sending message to user %s", chat_id)
         await bot.send_message(
-            chat_id=telegram_id,
+            chat_id=chat_id,
             text=text,
-            reply_markup=build_keyboard_for_stage(OnboardingStage.READY)
+            reply_markup=build_keyboard_for_stage(OnboardingStage.READY, str(chat_id))
         )
-        logger.info("Successfully sent integration connected notification to user %s", telegram_id)
-    except ValueError as exc:
-        logger.error("Invalid user_id format: %s - %s", user_id, exc)
+        logger.info("Successfully sent integration connected notification to user %s", user_id)
     except Exception as exc:
         logger.exception("Failed to notify bot about integration for user %s: %s", user_id, exc)
 
@@ -176,18 +151,7 @@ async def _index_profile_background(profile: CompanyProfile, knowledge_base: Kno
     metadata = {"user_id": profile.user_id, "source": "company_profile"}
 
     try:
-        await knowledge_base.index_dialog(dialog_id, summary, metadata)
-    except EmbeddingServiceUnavailable as exc:
-        logger.warning("Embedding unavailable when indexing profile for user %s: %s", profile.user_id, exc)
-        await store.set_json(
-            status_key,
-            {
-                "status": "failed",
-                "reason": "embedding_unavailable",
-                "finished_at": datetime.utcnow().isoformat(),
-            },
-        )
-        return
+        indexed = await knowledge_base.index_dialog(dialog_id, summary, metadata)
     except Exception as exc:  # pragma: no cover - defensive logging
         logger.exception("Failed to index company profile for user %s", profile.user_id)
         await store.set_json(
@@ -195,6 +159,17 @@ async def _index_profile_background(profile: CompanyProfile, knowledge_base: Kno
             {
                 "status": "failed",
                 "reason": "unexpected_error",
+                "finished_at": datetime.utcnow().isoformat(),
+            },
+        )
+        return
+
+    if not indexed:
+        await store.set_json(
+            status_key,
+            {
+                "status": "failed",
+                "reason": "embedding_unavailable",
                 "finished_at": datetime.utcnow().isoformat(),
             },
         )
